@@ -2257,13 +2257,38 @@ document.querySelectorAll('.spot').forEach(function(card){
 
 // ---------- message + order forms (Netlify Forms) ----------
 (function(){
+  // common misspellings of email providers; an order sent to a misspelled address can never be answered
+  const DOMAIN_FIXES = {
+    'gmali.com':'gmail.com', 'gmial.com':'gmail.com', 'gamil.com':'gmail.com', 'gmai.com':'gmail.com', 'gmil.com':'gmail.com',
+    'gmail.co':'gmail.com', 'gmail.con':'gmail.com', 'gmail.cm':'gmail.com', 'gmaill.com':'gmail.com', 'gnail.com':'gmail.com', 'gmail.om':'gmail.com',
+    'yaho.com':'yahoo.com', 'yahoo.co':'yahoo.com', 'yahooo.com':'yahoo.com', 'yhoo.com':'yahoo.com',
+    'hotmial.com':'hotmail.com', 'hotmai.com':'hotmail.com', 'hotmail.co':'hotmail.com', 'hotmal.com':'hotmail.com',
+    'outlok.com':'outlook.com', 'outlook.co':'outlook.com', 'outloo.com':'outlook.com', 'icloud.co':'icloud.com', 'iclod.com':'icloud.com'
+  };
+  function emailFix(value){
+    const at = value.lastIndexOf('@');
+    if (at < 1) return null;
+    const fixed = DOMAIN_FIXES[value.slice(at + 1).toLowerCase()];
+    return fixed ? value.slice(0, at + 1) + fixed : null;
+  }
+
   function wire(form, successText){
     const status = form.querySelector('.form-status');
     const send = form.querySelector('button[type="submit"]');
     function setStatus(text, kind){ status.textContent = text; status.className = 'form-status' + (kind ? ' ' + kind : ''); }
+    const emailInput = form.elements['email'];
+    let typoWarned = '';
 
     form.addEventListener('submit', function(e){
       e.preventDefault();
+      // stop once on a likely typo; sending again with the same address goes through
+      const fix = emailInput && emailFix(emailInput.value.trim());
+      if (fix && typoWarned !== emailInput.value) {
+        typoWarned = emailInput.value;
+        setStatus('Did you mean ' + fix + '? I can only email you at a correct address. Fix it, or press the button again to keep it.', 'err');
+        emailInput.focus();
+        return;
+      }
       if (form.elements['order_id']) form.elements['order_id'].value = '3I-' + Date.now().toString(36).toUpperCase().slice(-6);
       send.disabled = true;
       setStatus('Sending...');
