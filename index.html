@@ -502,6 +502,14 @@
   .offer-wide{grid-column:1 / -1; align-items:center;}
   .offer-wide > div{flex:1; min-width:0;}
   .offer-cta{flex:none;}
+  .ugc-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:1.1rem;}
+  .ugc{display:block; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--panel); transition:border-color .2s ease, transform .25s var(--ease);}
+  .ugc:hover{border-color:var(--grey-mid); transform:translateY(-3px);}
+  .ugc img{width:100%; height:auto; aspect-ratio:4/5;}
+  .ugc-grid + .games-note{margin-bottom:3rem;}
+  .ugc-grid + .games-note a{color:var(--white); text-underline-offset:3px;}
+  @media (max-width:1100px){ .ugc-grid{grid-template-columns:repeat(3, minmax(0, 1fr));} }
+  @media (max-width:560px){ .ugc-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.7rem;} }
   @media (max-width:560px){ .offer-wide{align-items:flex-start;} .offer-cta{width:100%; justify-content:center;} }
   .new-tag{font:600 .68rem var(--font-body); letter-spacing:.04em; text-transform:uppercase; color:var(--void); background:var(--white); border-radius:999px; padding:.15rem .5rem; vertical-align:middle; margin-left:.3rem;}
   .sys-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:1.1rem;}
@@ -1250,6 +1258,16 @@
       <a href="#messageForm" class="btn btn-outline offer-cta" data-topic="UGC item" data-message="Hi, I want a UGC item: ">Get a UGC quote</a>
     </div>
   </div>
+
+  <h3 class="group-title reveal"><span class="group-dot own"></span>UGC I've made <span class="group-count">5</span></h3>
+  <div class="ugc-grid">
+    <a class="ugc reveal" href="assets/ugc/gamcha.png" target="_blank" rel="noopener"><img src="assets/ugc/gamcha-web.jpg" alt="Bangla Gamcha: neck scarf inspired by the classic Bangladeshi gamcha" loading="lazy" width="600" height="750"></a>
+    <a class="ugc reveal" href="assets/ugc/head-wrap.png" target="_blank" rel="noopener"><img src="assets/ugc/head-wrap-web.jpg" alt="Gamcha Head Wrap: checkered gamcha tied as a head wrap" loading="lazy" width="600" height="750"></a>
+    <a class="ugc reveal" href="assets/ugc/bucket-hat.png" target="_blank" rel="noopener"><img src="assets/ugc/bucket-hat-web.jpg" alt="KNAVERY Bucket Hat: black bucket hat with the KNAVERY logo" loading="lazy" width="600" height="750"></a>
+    <a class="ugc reveal" href="assets/ugc/backpack.png" target="_blank" rel="noopener"><img src="assets/ugc/backpack-web.jpg" alt="KNAVERY Backpack: black tactical backpack with a KNAVERY patch" loading="lazy" width="600" height="750"></a>
+    <a class="ugc reveal" href="assets/ugc/gothic-tiara.png" target="_blank" rel="noopener"><img src="assets/ugc/gothic-tiara-web.jpg" alt="Gothic Tiara: dark gothic crown with tall jeweled spikes" loading="lazy" width="600" height="750"></a>
+  </div>
+  <p class="games-note reveal">Tap a poster to see it full size. Want something like this? <a href="#messageForm" data-topic="UGC item" data-message="Hi, I want a UGC item: ">Get a UGC quote</a>, priced on the work.</p>
 
   <h3 class="group-title reveal"><span class="group-dot own"></span>Available systems &amp; tools <span class="group-count">9</span></h3>
   <div class="sys-grid">
