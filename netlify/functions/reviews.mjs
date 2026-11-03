@@ -5,7 +5,8 @@
 //
 // How a purchase is confirmed:
 //   Robux        the Roblox user must own the item's game pass (Roblox's public is-owned check)
-//   bKash/Nagad  the order ID and email must match an order submitted through the site's order form
+//   bKash/Nagad  the order ID and email must match an order submitted through the site's order form,
+//                and the payment must be confirmed in reviews-admin.html (netlify/functions/orders.mjs)
 //
 // Netlify environment variables:
 //   NETLIFY_API_TOKEN   personal access token, used to read the order form submissions
@@ -74,6 +75,10 @@ async function confirmOrder(item, orderId, email, siteId) {
     if (order) {
       if (String(order.data.email).trim().toLowerCase() !== email) break;
       if (order.data.system !== item) throw new Refusal('Order ' + orderId + ' was for the ' + order.data.system + ', not the ' + item + '.');
+      // a placed order isn't enough: the payment has to be confirmed first
+      if (!(await getStore('paid-orders').get(orderId))) {
+        throw new Refusal("Your payment for order " + orderId + " hasn't been confirmed yet. You can review it once I confirm your payment.");
+      }
       return { key: 'order-' + orderId, name: String(order.data.roblox_username || 'Buyer').slice(0, 40) };
     }
     if (subs.length < 100) break;

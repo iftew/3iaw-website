@@ -1523,7 +1523,7 @@
       <ol class="order-steps">
         <li><b>Pay for your item</b> Pick an item, then a payment method. How to pay appears once you pick one. For UGC we agreed on, choose "Custom UGC (already chosen)".</li>
         <li><b>Place your order</b> Add your email and your payment details so I can confirm it.</li>
-        <li><b>Get it, then review it</b> Once your payment is confirmed, I email your item to you. Then leave a review with your order ID.</li>
+        <li><b>Get it, then review it</b> Once your payment is confirmed, I email your item to you. After that you can leave a review with your order ID.</li>
       </ol>
     </div>
     <form class="message-form" id="orderForm" name="order" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
@@ -1597,7 +1597,7 @@
       <span class="eyebrow">05 · Reviews</span>
       <h2>What buyers say.</h2>
     </div>
-    <p>Every review comes from a confirmed purchase: a game pass owner on Roblox, or a real order placed here.</p>
+    <p>Every review comes from a confirmed purchase: a game pass owner on Roblox, or a paid order I have confirmed.</p>
   </div>
   <div class="review-summary reveal" id="reviewSummary" hidden></div>
   <div class="review-grid reveal" id="reviewList">
@@ -1610,7 +1610,7 @@
       <p>Bought one of my systems? Tell others how it went.</p>
       <ol class="order-steps">
         <li><b>Paid with Robux</b> Enter the Roblox username that owns the game pass. Roblox confirms it automatically.</li>
-        <li><b>Paid with bKash or Nagad</b> Enter the order ID you got when you ordered (like 3I-ABC123) and the same email.</li>
+        <li><b>Paid with bKash or Nagad</b> Once I have confirmed your payment, enter your order ID (like 3I-ABC123) and the email you ordered with.</li>
         <li><b>One review per purchase</b> Posting again for the same purchase replaces your earlier review.</li>
       </ol>
     </div>
@@ -2379,7 +2379,7 @@ document.querySelectorAll('.spot').forEach(function(card){
   if (orderForm) wire(orderForm, function(f){
     const id = f.elements['order_id'].value;
     const what = f.elements['system'].value === 'Custom UGC' ? 'your UGC' : 'the system';
-    return 'Order ' + id + ' received! Once I confirm your payment, I will email ' + what + ' to ' + f.elements['email'].value + '. After you get it, leave a review in the Reviews section with order ID ' + id + '.';
+    return 'Order ' + id + ' received! Once I confirm your payment, I will email ' + what + ' to ' + f.elements['email'].value + '. After that, you can leave a review in the Reviews section with order ID ' + id + '.';
   });
 
   // ---- shop: prices, payment instructions and "Order now" buttons ----
