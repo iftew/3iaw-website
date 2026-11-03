@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Manage reviews | 3Iaw</title>
+<style>
+  :root{--void:#0a0a0c; --panel:#131316; --surface:#1c1c20; --line:#333339; --grey-dim:#75757d; --grey-mid:#a2a2aa; --grey-light:#d4d4d9; --white:#f5f5f7; --ok:#7fd1a4; --err:#f08a8a;}
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--void); color:var(--grey-light); font:15px/1.55 system-ui, sans-serif; padding:2rem 16px;}
+  main{max-width:760px; margin:0 auto;}
+  h1{color:var(--white); font-size:1.6rem; margin:0 0 .4rem;}
+  p{color:var(--grey-mid); margin:0 0 1.4rem;}
+  form{display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1.4rem;}
+  input{flex:1; min-width:220px; font:inherit; color:var(--white); background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:.7rem .85rem;}
+  button{font:inherit; font-weight:600; border-radius:10px; padding:.7rem 1.1rem; cursor:pointer; border:1px solid var(--line); background:var(--white); color:var(--void);}
+  button.del{background:transparent; color:var(--err); border-color:rgba(240,138,138,.4); padding:.45rem .8rem; font-size:.85rem;}
+  #status{min-height:1.4em; margin-bottom:1rem;}
+  #status.err{color:var(--err);} #status.ok{color:var(--ok);}
+  .r{border:1px solid var(--line); background:var(--panel); border-radius:12px; padding:1rem 1.1rem; margin-bottom:.8rem; display:flex; gap:1rem; align-items:flex-start;}
+  .r div{flex:1; min-width:0;}
+  .r b{color:var(--white);}
+  .meta{font-size:.82rem; color:var(--grey-dim);}
+  .text{margin:.35rem 0 0; color:var(--grey-light); white-space:pre-line; overflow-wrap:anywhere;}
+</style>
+</head>
+<body>
+<main>
+  <h1>Manage reviews</h1>
+  <p>Only for you. Enter the REVIEWS_ADMIN_KEY you set in Netlify, then delete any review that shouldn't be on the site.</p>
+  <form id="keyForm">
+    <input type="password" id="key" placeholder="Admin key" autocomplete="current-password" required>
+    <button type="submit">Unlock</button>
+  </form>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="list"></div>
+</main>
+<script>
+(function(){
+  const keyInput = document.getElementById('key');
+  const status = document.getElementById('status');
+  const list = document.getElementById('list');
+  let key = '';
+  try { key = sessionStorage.getItem('3iaw-admin-key') || ''; } catch (e) {}
+  function setStatus(t, kind){ status.textContent = t; status.className = kind || ''; }
+  function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function load(){
+    fetch('/api/reviews').then(function(r){ return r.json(); }).then(function(d){
+      list.innerHTML = '';
+      const reviews = d.reviews || [];
+      if (!reviews.length) { setStatus('No reviews yet.'); return; }
+      reviews.forEach(function(r){
+        const row = el('div', 'r');
+        const body = el('div');
+        body.appendChild(el('b', null, r.name + ' · ' + r.rating + '/5'));
+        body.appendChild(el('div', 'meta', r.item + ' · ' + r.method + ' · ' + new Date(r.date).toLocaleString()));
+        body.appendChild(el('p', 'text', r.text));
+        const del = el('button', 'del', 'Delete');
+        del.type = 'button';
+        del.disabled = !key;
+        del.addEventListener('click', function(){
+          if (!confirm('Delete this review by ' + r.name + '?')) return;
+          fetch('/api/reviews?id=' + encodeURIComponent(r.id), { method: 'DELETE', headers: { 'x-admin-key': key } })
+            .then(function(res){ return res.json().then(function(j){ if (!res.ok) throw new Error(j.error || res.status); }); })
+            .then(function(){ row.remove(); setStatus('Deleted.', 'ok'); })
+            .catch(function(e){ setStatus('Not deleted: ' + e.message, 'err'); });
+        });
+        row.appendChild(body); row.appendChild(del);
+        list.appendChild(row);
+      });
+      setStatus(key ? 'Unlocked. ' + reviews.length + ' reviews.' : 'Enter your admin key to delete reviews.');
+    }).catch(function(){ setStatus("Reviews couldn't load.", 'err'); });
+  }
+
+  document.getElementById('keyForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    key = keyInput.value.trim();
+    try { sessionStorage.setItem('3iaw-admin-key', key); } catch (e) {}
+    keyInput.value = '';
+    load();
+  });
+  load();
+})();
+</script>
+</body>
+</html>

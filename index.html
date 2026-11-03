@@ -499,6 +499,11 @@
   .offer .ico{width:44px; height:44px; border-radius:11px;}
   .offer h3{font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.25rem; margin:0 0 .3rem;}
   .offer p{margin:0; color:var(--grey-dim); font-size:.93rem;}
+  .offer-wide{grid-column:1 / -1; align-items:center;}
+  .offer-wide > div{flex:1; min-width:0;}
+  .offer-cta{flex:none;}
+  @media (max-width:560px){ .offer-wide{align-items:flex-start;} .offer-cta{width:100%; justify-content:center;} }
+  .new-tag{font:600 .68rem var(--font-body); letter-spacing:.04em; text-transform:uppercase; color:var(--void); background:var(--white); border-radius:999px; padding:.15rem .5rem; vertical-align:middle; margin-left:.3rem;}
   .sys-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:1.1rem;}
   .sys{
     border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
@@ -797,6 +802,38 @@
   .pay-option input:disabled + span{opacity:.4; cursor:not-allowed;}
   .pay-option input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px;}
 
+  /* ---------- reviews ---------- */
+  .review-summary{display:flex; align-items:center; gap:1rem; margin:0 0 1.4rem; color:var(--grey-mid); font-size:.95rem;}
+  .review-summary[hidden]{display:none;}
+  .review-summary b{font-family:var(--font-display); font-weight:800; font-size:2.2rem; line-height:1; color:var(--white);}
+  .stars{display:inline-flex; gap:2px; color:#f5c451; letter-spacing:0;}
+  .stars svg{display:block;}
+  .stars .off{color:var(--line);}
+  .review-grid{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1.1rem;}
+  .review{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:1.4rem 1.5rem; display:flex; flex-direction:column; gap:.8rem;
+  }
+  .review-top{display:flex; justify-content:space-between; align-items:center; gap:1rem;}
+  .review-date{font-family:var(--font-mono); font-size:.72rem; color:var(--grey-dim);}
+  .review p{margin:0; color:var(--grey-light); font-size:.95rem; white-space:pre-line; overflow-wrap:anywhere;}
+  .review-by{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .7rem; font-size:.84rem; color:var(--grey-dim); margin-top:auto;}
+  .review-by b{color:var(--white); font-weight:600;}
+  .verified{display:inline-flex; align-items:center; gap:.3rem; color:var(--ok); font-weight:500;}
+  .review-empty{grid-column:1 / -1; border:1px dashed var(--line); border-radius:var(--radius); padding:2rem 1.5rem; text-align:center; color:var(--grey-dim); margin:0;}
+  .review-card{margin-top:2.2rem;}
+  .field-row[hidden]{display:none;}
+  .star-input{border:0; margin:0; padding:0; min-width:0;}
+  .star-pick{display:inline-flex; flex-direction:row-reverse; justify-content:flex-end; gap:.25rem;}
+  .star-pick input{position:absolute; opacity:0; pointer-events:none;}
+  .star-pick label{cursor:pointer; color:var(--line); transition:color .12s ease, transform .12s var(--ease);}
+  .star-pick label svg{display:block;}
+  .star-pick label:hover, .star-pick label:hover ~ label,
+  .star-pick input:checked ~ label{color:#f5c451;}
+  .star-pick label:hover{transform:scale(1.12);}
+  .star-pick input:focus-visible + label{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+  @media (max-width:760px){ .review-grid{grid-template-columns:minmax(0, 1fr);} }
+
   /* toast */
   .toast{
     position:fixed; left:50%; bottom:1.6rem; z-index:80;
@@ -905,6 +942,7 @@
       <li><a href="#skills">Skills</a></li>
       <li><a href="#projects">Work</a></li>
       <li><a href="#services">Services</a></li>
+      <li><a href="#reviews">Reviews</a></li>
       <li><a href="#achievements">Journey</a></li>
       <li><a href="#contact" class="nav-cta">Contact</a></li>
     </ul>
@@ -963,7 +1001,7 @@
         <span class="label">Roblox games built or worked on</span>
       </div>
       <div class="stat-block">
-        <span class="num">985K+</span>
+        <span class="num" data-stat="total-visits">985K+</span>
         <span class="label">Visits across games I've built and worked on</span>
       </div>
     </div>
@@ -1020,7 +1058,7 @@
 
   <h3 class="group-title reveal"><span class="group-dot own"></span>My own games <span class="group-count">3</span></h3>
   <div class="game-grid">
-    <a class="game own spot reveal" href="https://www.roblox.com/games/112354162426135/Bangali-Era" target="_blank" rel="noopener">
+    <a class="game own spot reveal" data-game="10479483082" href="https://www.roblox.com/games/112354162426135/Bangali-Era" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Bangali_Era_thumb.jpg" alt="Bangali Era on Roblox" loading="lazy">
         <img class="game-icon" src="assets/games/Bangali_Era_icon.jpg" alt="" loading="lazy">
@@ -1033,13 +1071,13 @@
         <h3>Bangali Era</h3>
         <p>Multiplayer minigames, social hangouts and cultural activities inspired by everyday life in Bangladesh.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>33K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>77 favorites</span>
+          <span data-universe="10479483082" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>33K+ visits</span>
+          <span data-universe="10479483082" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>77 favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game own spot reveal" href="https://www.roblox.com/games/73713754659735/Ondhokar" target="_blank" rel="noopener">
+    <a class="game own spot reveal" data-game="10080882090" href="https://www.roblox.com/games/73713754659735/Ondhokar" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Ondhokar_thumb.jpg" alt="Ondhokar on Roblox" loading="lazy">
         <span class="game-badge live"><span class="badge-dot"></span>Out now</span><img class="game-icon" src="assets/games/Ondhokar_icon.jpg" alt="" loading="lazy">
@@ -1052,11 +1090,13 @@
         <h3>Ondhokar</h3>
         <p>My horror game, now released on Roblox. Step into the dark if you dare.</p>
         <div class="game-meta">
+          <span data-universe="10080882090" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>2.6K+ visits</span>
+          <span data-universe="10080882090" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>17 favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game own spot reveal" href="https://www.roblox.com/games/107121101445653/CTG-CITY" target="_blank" rel="noopener">
+    <a class="game own spot reveal" data-game="10764929985" href="https://www.roblox.com/games/107121101445653/CTG-CITY" target="_blank" rel="noopener">
       <div class="game-thumb contain">
         <img src="assets/games/CTG_CITY_icon.jpg" alt="CTG CITY on Roblox" loading="lazy">
         <span class="game-badge"><span class="badge-dot"></span>Coming soon</span><img class="game-icon" src="assets/games/CTG_CITY_icon.jpg" alt="" loading="lazy">
@@ -1069,7 +1109,7 @@
         <h3>CTG CITY</h3>
         <p>A city experience named after Chittagong, coming soon to Roblox.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>320+ visits</span>
+          <span data-universe="10764929985" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>320+ visits</span>
           <span class="game-play">View on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
@@ -1078,7 +1118,7 @@
 
   <h3 class="group-title reveal"><span class="group-dot"></span>Worked on as a developer <span class="group-count">5</span></h3>
   <div class="game-grid">
-    <a class="game spot reveal" href="https://www.roblox.com/games/110473972657767/Bangali-Hood" target="_blank" rel="noopener">
+    <a class="game spot reveal" data-game="9898429697" href="https://www.roblox.com/games/110473972657767/Bangali-Hood" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Bangali_Hood_thumb.jpg" alt="Bangali Hood on Roblox" loading="lazy">
         <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Bangali_Hood_icon.jpg" alt="" loading="lazy">
@@ -1091,13 +1131,13 @@
         <h3>Bangali Hood</h3>
         <p>A proper chill hangout for the Bangladeshi community, with an adda spot for group chats, a food corner and more.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>650K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>800+ favorites</span>
+          <span data-universe="9898429697" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>650K+ visits</span>
+          <span data-universe="9898429697" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>800+ favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game spot reveal" href="https://www.roblox.com/games/118539730361579/Bangla-Town" target="_blank" rel="noopener">
+    <a class="game spot reveal" data-game="9892395751" href="https://www.roblox.com/games/118539730361579/Bangla-Town" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Bangla_Town_thumb.jpg" alt="Bangla Town on Roblox" loading="lazy">
         <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Bangla_Town_icon.jpg" alt="" loading="lazy">
@@ -1110,15 +1150,15 @@
         <h3>Bangla Town</h3>
         <p>A chill hangout with real Bangladeshi vibes: adda spots, a concert stage for singing and more.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>228K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>660+ favorites</span>
+          <span data-universe="9892395751" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>228K+ visits</span>
+          <span data-universe="9892395751" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>660+ favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game spot reveal" href="https://www.roblox.com/games/134884285482428/Lumina-Hangout" target="_blank" rel="noopener">
+    <a class="game spot reveal" data-game="10771061328" href="https://www.roblox.com/games/134884285482428/Lumina-Hangout" target="_blank" rel="noopener">
       <div class="game-thumb">
-        <img src="assets/games/Lumina_Hangout_thumb.jpg" alt="Lumina Hangout on Roblox" loading="lazy">
+        <img src="assets/games/Lumina_Hangout_thumb.jpg" alt="[Relapse] Lumina Hangout on Roblox" loading="lazy">
         <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Lumina_Hangout_icon.jpg" alt="" loading="lazy">
       </div>
       <div class="game-body">
@@ -1126,16 +1166,16 @@
           <span class="proj-tag">Developer</span>
           <span class="proj-num">06</span>
         </div>
-        <h3>Lumina Hangout</h3>
-        <p>A peaceful, aesthetic hangout to relax, listen to music, chat and take screenshots with friends.</p>
+        <h3>[Relapse] Lumina Hangout</h3>
+        <p>The ultimate chill spot: an aesthetic hangout to relax, listen to music, meet people over voice or text chat and take screenshots with friends.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>5.6K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>34 favorites</span>
+          <span data-universe="10771061328" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>5.6K+ visits</span>
+          <span data-universe="10771061328" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>34 favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game spot reveal" href="https://www.roblox.com/games/134108983461979/Bengali-Society" target="_blank" rel="noopener">
+    <a class="game spot reveal" data-game="10770998037" href="https://www.roblox.com/games/134108983461979/Bengali-Society" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Bengali_Society_thumb.jpg" alt="Bengali Society on Roblox" loading="lazy">
         <span class="game-badge live"><span class="badge-dot"></span>Just updated</span><img class="game-icon" src="assets/games/Bengali_Society_icon.jpg" alt="" loading="lazy">
@@ -1148,13 +1188,13 @@
         <h3>Bengali Society</h3>
         <p>A beautiful hangout for the Bangladeshi and Bengali community, with dances, fireworks, fun tools and tip leaderboards.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>4.9K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>11 favorites</span>
+          <span data-universe="10770998037" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>4.9K+ visits</span>
+          <span data-universe="10770998037" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>11 favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
-    <a class="game spot reveal" href="https://www.roblox.com/games/86913577508706/Mystic-Hangout" target="_blank" rel="noopener">
+    <a class="game spot reveal" data-game="10294847053" href="https://www.roblox.com/games/86913577508706/Mystic-Hangout" target="_blank" rel="noopener">
       <div class="game-thumb">
         <img src="assets/games/Mystic_Hangout_thumb.jpg" alt="Mystic Hangout on Roblox" loading="lazy">
         <img class="game-icon" src="assets/games/Mystic_Hangout_icon.jpg" alt="" loading="lazy">
@@ -1167,23 +1207,23 @@
         <h3>Mystic Hangout</h3>
         <p>A peaceful, beautifully crafted world for unwinding, connecting with friends and exploring.</p>
         <div class="game-meta">
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>58K+ visits</span>
-          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>460+ favorites</span>
+          <span data-universe="10294847053" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>58K+ visits</span>
+          <span data-universe="10294847053" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>460+ favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
   </div>
-  <p class="games-note reveal">Visit counts as of November 2026.</p>
+  <p class="games-note reveal"><span id="statsNote">Visit counts as of November 2026.</span></p>
 </section>
 
 <section id="services" class="grid-bg">
   <div class="section-head reveal">
     <div>
       <span class="eyebrow">04 · Services</span>
-      <h2>Systems &amp; perm dev.</h2>
+      <h2>Systems, UGC &amp; perm dev.</h2>
     </div>
-    <p>Ready made systems you can drop into your game, or me on your team as a permanent developer.</p>
+    <p>Ready made systems you can drop into your game, custom UGC items, or me on your team as a permanent developer.</p>
   </div>
 
   <div class="offer-grid">
@@ -1200,6 +1240,14 @@
         <h3>Perm dev</h3>
         <p>Join your game as a permanent developer: scripting, systems, UI and ongoing updates, like I've done for Bangali Hood, Bangla Town, Lumina Hangout, Bengali Society and Mystic Hangout.</p>
       </div>
+    </div>
+    <div class="offer offer-wide spot reveal">
+      <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 3l4 2.5L16 3l5 3-2.5 4.5V21h-13V10.5L3 6l5-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+      <div>
+        <h3>Custom UGC <span class="new-tag">New</span></h3>
+        <p>Custom Roblox UGC items: hats, hair, accessories and more, made to your idea. Every piece is priced on the work it takes, so tell me what you want and I'll send you a quote.</p>
+      </div>
+      <a href="#messageForm" class="btn btn-outline offer-cta" data-topic="UGC item" data-message="Hi, I want a UGC item: ">Get a UGC quote</a>
     </div>
   </div>
 
@@ -1503,10 +1551,91 @@
   </div>
 </section>
 
+<section id="reviews">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">05 · Reviews</span>
+      <h2>What buyers say.</h2>
+    </div>
+    <p>Every review comes from a confirmed purchase: a game pass owner on Roblox, or a real order placed here.</p>
+  </div>
+  <div class="review-summary reveal" id="reviewSummary" hidden></div>
+  <div class="review-grid reveal" id="reviewList">
+    <p class="review-empty">Loading reviews...</p>
+  </div>
+
+  <div class="message-card review-card reveal" id="review">
+    <div class="message-head">
+      <h3>Review your purchase</h3>
+      <p>Bought one of my systems? Tell others how it went.</p>
+      <ol class="order-steps">
+        <li><b>Paid with Robux</b> Enter the Roblox username that owns the game pass. Roblox confirms it automatically.</li>
+        <li><b>Paid with bKash or Nagad</b> Enter the order ID you got when you ordered (like 3I-ABC123) and the same email.</li>
+        <li><b>One review per purchase</b> Posting again for the same purchase replaces your earlier review.</li>
+      </ol>
+    </div>
+    <form class="message-form" id="reviewForm">
+      <label class="field">
+        <span>Item you bought</span>
+        <select name="item" required>
+          <option>Fly Race System</option>
+          <option>Game Essentials Pack</option>
+          <option>Rowboat System</option>
+          <option>Kite Fighting System</option>
+          <option>Donation System</option>
+          <option>Halloween Tools Pack</option>
+          <option>Partner System</option>
+          <option>Profile System</option>
+          <option>Concert Stage System</option>
+        </select>
+      </label>
+      <fieldset class="field pay-field">
+        <span>How you paid</span>
+        <div class="pay-options">
+          <label class="pay-option"><input type="radio" name="method" value="Robux" required checked><span>Robux</span></label>
+          <label class="pay-option"><input type="radio" name="method" value="bKash/Nagad"><span>bKash / Nagad</span></label>
+        </div>
+      </fieldset>
+      <label class="field" id="reviewUserField">
+        <span>Roblox username</span>
+        <input type="text" name="username" maxlength="20" placeholder="The account that owns the game pass" required>
+      </label>
+      <div class="field-row" id="reviewOrderFields" hidden>
+        <label class="field">
+          <span>Order ID</span>
+          <input type="text" name="orderId" maxlength="14" placeholder="3I-ABC123">
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="The email you ordered with">
+        </label>
+      </div>
+      <fieldset class="field star-input">
+        <span>Rating</span>
+        <div class="star-pick">
+          <input type="radio" name="rating" id="star5" value="5" required><label for="star5" title="5 stars"></label>
+          <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars"></label>
+          <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars"></label>
+          <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars"></label>
+          <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star"></label>
+        </div>
+      </fieldset>
+      <label class="field">
+        <span>Your review</span>
+        <textarea name="text" rows="4" maxlength="1000" placeholder="How was the system? Was setup easy?" required></textarea>
+      </label>
+      <div class="form-foot">
+        <button class="btn btn-solid" type="submit"><span>Post review</span></button>
+        <span class="form-status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
 <section id="achievements">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">05 · Journey</span>
+      <span class="eyebrow">06 · Journey</span>
       <h2>How it's going.</h2>
     </div>
     <p>A short timeline, growing as things happen.</p>
@@ -1542,7 +1671,7 @@
 <section class="contact" id="contact">
   <div class="contact-card reveal">
     <div>
-      <span class="eyebrow">06 · Contact</span>
+      <span class="eyebrow">07 · Contact</span>
       <h2>Let's build something.</h2>
       <p>Want one of my systems, a custom build, or a perm dev for your game? Send a message below, DM me on Discord, or email me.</p>
     </div>
@@ -1600,6 +1729,7 @@
           <option>Buying a system</option>
           <option>Perm dev</option>
           <option>Custom system</option>
+          <option>UGC item</option>
           <option>Something else</option>
         </select>
       </label>
@@ -1790,6 +1920,164 @@ document.body.classList.remove('no-js');
       if (!seen) { try { sessionStorage.setItem('3iaw-viewed', '1'); } catch (e) {} }
     })
     .catch(function(){});                            // counter down: keep the last known number (or stay hidden)
+})();
+
+// ---------- live Roblox game info (netlify/functions/roblox-stats.mjs) ----------
+// the names, pictures and numbers written in the page are the fallback; they're replaced once the live data arrives
+(function(){
+  const els = document.querySelectorAll('[data-stat]');
+  const cards = document.querySelectorAll('[data-game]');
+  if (location.protocol === 'file:') return;
+  // swap a picture only once the new one has loaded, so a broken link never shows
+  function swapImg(img, url){
+    if (!img || !url || img.src === url) return;
+    const probe = new Image();
+    probe.onload = function(){ img.src = url; };
+    probe.src = url;
+  }
+  function updateCard(card, g){
+    const title = card.querySelector('.game-body h3');
+    if (g.name && title) title.textContent = g.name.trim();
+    const thumb = card.querySelector('.game-thumb');
+    const main = thumb && thumb.querySelector('img:first-child');
+    if (main && g.name) main.alt = g.name + ' on Roblox';
+    // cards marked "contain" (CTG CITY) show the icon full size, since Roblox only has its grey placeholder thumbnail
+    if (thumb && thumb.classList.contains('contain')) swapImg(main, g.icon);
+    else swapImg(main, g.thumbnail);
+    swapImg(card.querySelector('.game-icon'), g.icon);
+  }
+  // rounded down so a "+" is always true: 77, 320+, 5.6K+, 650K+, 1.2M+
+  function fmt(n, exactBelow){
+    if (n < exactBelow) return String(n);
+    if (n < 1000) return Math.floor(n / 10) * 10 + '+';
+    if (n < 10000) return (Math.floor(n / 100) / 10) + 'K+';
+    if (n < 1e6) return Math.floor(n / 1000) + 'K+';
+    return (Math.floor(n / 1e5) / 10) + 'M+';
+  }
+  function setText(el, text){
+    // the label is the text after the icon, e.g. "650K+ visits"
+    const node = el.lastChild;
+    if (node && node.nodeType === 3) node.nodeValue = text; else el.textContent = text;
+  }
+  fetch('/api/roblox-stats')
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(d){
+      if (!d.games) return;
+      cards.forEach(function(card){
+        const g = d.games[card.getAttribute('data-game')];
+        if (g) updateCard(card, g);
+      });
+      els.forEach(function(el){
+        const stat = el.getAttribute('data-stat');
+        if (stat === 'total-visits') { if (d.totalVisits > 0) setText(el, fmt(d.totalVisits, 0)); return; }
+        const g = d.games[el.getAttribute('data-universe')];
+        if (!g) return;
+        if (stat === 'visits') setText(el, fmt(g.visits, 0) + ' visits');
+        if (stat === 'favorites') setText(el, fmt(g.favorites, 100) + ' favorites');
+      });
+      const note = document.getElementById('statsNote');
+      if (note) note.textContent = 'Visit counts update live from Roblox.';
+    })
+    .catch(function(){});                            // function down: keep the numbers written in the page
+})();
+
+// ---------- buyer reviews (netlify/functions/reviews.mjs) ----------
+(function(){
+  const list = document.getElementById('reviewList');
+  const summary = document.getElementById('reviewSummary');
+  const form = document.getElementById('reviewForm');
+  if (!list || !form) return;
+  const STAR = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>';
+  const CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  form.querySelectorAll('.star-pick label').forEach(function(l){ l.innerHTML = STAR.replace(/16/g, '28'); });
+
+  function stars(n){
+    let s = '';
+    for (let i = 1; i <= 5; i++) s += i <= n ? STAR : STAR.replace('aria-hidden', 'class="off" aria-hidden');
+    return '<span class="stars" role="img" aria-label="' + n + ' out of 5 stars">' + s + '</span>';
+  }
+  function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  let reviews = [];
+  function render(){
+    list.innerHTML = '';
+    if (!reviews.length) {
+      list.appendChild(el('p', 'review-empty', 'No reviews yet. Bought a system? Be the first to review it below.'));
+      summary.hidden = true;
+      return;
+    }
+    const avg = reviews.reduce(function(t, r){ return t + r.rating; }, 0) / reviews.length;
+    summary.innerHTML = '<b>' + avg.toFixed(1) + '</b>' + stars(Math.round(avg)) + '<span>' + reviews.length + (reviews.length === 1 ? ' review' : ' reviews') + '</span>';
+    summary.hidden = false;
+    reviews.forEach(function(r){
+      // review text and names are set with textContent, never as HTML
+      const card = el('article', 'review');
+      const top = el('div', 'review-top');
+      top.insertAdjacentHTML('beforeend', stars(r.rating));
+      top.appendChild(el('span', 'review-date', new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })));
+      const by = el('div', 'review-by');
+      by.appendChild(el('b', null, r.name));
+      by.appendChild(el('span', null, r.item));
+      const v = el('span', 'verified');
+      v.innerHTML = CHECK;
+      v.appendChild(document.createTextNode(r.method === 'Robux' ? 'Owns the game pass' : 'Verified order'));
+      by.appendChild(v);
+      card.appendChild(top);
+      card.appendChild(el('p', null, r.text));
+      card.appendChild(by);
+      list.appendChild(card);
+    });
+  }
+
+  fetch('/api/reviews')
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(d){ reviews = d.reviews || []; render(); })
+    .catch(function(){ list.innerHTML = ''; list.appendChild(el('p', 'review-empty', "Reviews couldn't load right now.")); });
+
+  // Robux buyers give their username; bKash / Nagad buyers give their order ID and email
+  const userField = document.getElementById('reviewUserField');
+  const orderFields = document.getElementById('reviewOrderFields');
+  function updateMethod(){
+    const robux = form.elements['method'].value === 'Robux';
+    userField.hidden = !robux;
+    orderFields.hidden = robux;
+    form.elements['username'].required = robux;
+    form.elements['orderId'].required = !robux;
+    form.elements['email'].required = !robux;
+  }
+  form.addEventListener('change', updateMethod);
+  updateMethod();
+
+  const status = form.querySelector('.form-status');
+  const send = form.querySelector('button[type="submit"]');
+  function setStatus(text, kind){ status.textContent = text; status.className = 'form-status' + (kind ? ' ' + kind : ''); }
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const f = form.elements;
+    send.disabled = true;
+    setStatus('Checking your purchase...');
+    fetch('/api/reviews', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        item: f['item'].value, method: f['method'].value, rating: Number(f['rating'].value), text: f['text'].value,
+        username: f['username'].value, orderId: f['orderId'].value, email: f['email'].value
+      })
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(d){
+        if (!res.ok || !d.review) throw new Error(d.error || 'Could not post your review right now. Please try again later.');
+        reviews = [d.review].concat(reviews.filter(function(r){ return r.id !== d.review.id; }));
+        render();
+        form.reset();
+        updateMethod();
+        setStatus('Thanks! Your review is up.', 'ok');
+        list.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    }).catch(function(err){
+      // a TypeError means the request never reached the site
+      setStatus(err instanceof TypeError ? 'Could not post your review right now. Please try again later.' : err.message, 'err');
+    }).finally(function(){ send.disabled = false; });
+  });
 })();
 
 // ---------- background music ----------
