@@ -510,7 +510,9 @@
   .ugc-grid + .games-note a{color:var(--white); text-underline-offset:3px;}
   @media (max-width:1100px){ .ugc-grid{grid-template-columns:repeat(3, minmax(0, 1fr));} }
   @media (max-width:560px){ .ugc-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.7rem;} }
-  @media (max-width:560px){ .offer-wide{align-items:flex-start;} .offer-cta{width:100%; justify-content:center;} }
+  .offer-ctas{display:flex; flex-direction:column; gap:.6rem; flex:none;}
+  .offer-ctas .offer-cta{justify-content:center;}
+  @media (max-width:560px){ .offer-wide{align-items:flex-start;} .offer-ctas{width:100%;} .offer-cta{width:100%; justify-content:center;} }
   .new-tag{font:600 .68rem var(--font-body); letter-spacing:.04em; text-transform:uppercase; color:var(--void); background:var(--white); border-radius:999px; padding:.15rem .5rem; vertical-align:middle; margin-left:.3rem;}
   .sys-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:1.1rem;}
   .sys{
@@ -799,6 +801,7 @@
   .pay-field{border:0; margin:0; padding:0; min-width:0;}
   .pay-options{display:flex; gap:.6rem; flex-wrap:wrap;}
   .pay-option{position:relative; cursor:pointer;}
+  .pay-option[hidden]{display:none;}
   .pay-option input{position:absolute; opacity:0; pointer-events:none;}
   .pay-option span{
     display:inline-flex; align-items:center; gap:.5rem;
@@ -905,7 +908,7 @@
     .method .ico{width:40px; height:40px;}
     .method-value{font-size:.95rem;}
     .pay-options{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:.5rem;}
-    #reviewForm .pay-options{grid-template-columns:repeat(2, minmax(0, 1fr));}
+    #reviewForm .pay-options, .pay-options.two{grid-template-columns:repeat(2, minmax(0, 1fr));}
     .pay-option span{justify-content:center; width:100%; padding:.7rem .4rem; gap:.4rem; font-size:.88rem;}
     .pay-usd{display:block; margin:.25rem 0 0;}
     .form-foot .btn{width:100%; justify-content:center;}
@@ -1260,7 +1263,10 @@
         <h3>Custom UGC <span class="new-tag">New</span></h3>
         <p>Custom Roblox UGC items: hats, hair, accessories and more, made to your idea. Every piece is priced on the work it takes, so tell me what you want and I'll send you a quote.</p>
       </div>
-      <a href="#messageForm" class="btn btn-outline offer-cta" data-topic="UGC item" data-message="Hi, I want a UGC item: ">Get a UGC quote</a>
+      <div class="offer-ctas">
+        <a href="#messageForm" class="btn btn-outline offer-cta" data-topic="UGC item" data-message="Hi, I want a UGC item: ">Get a UGC quote</a>
+        <a href="#orderForm" class="btn btn-solid offer-cta" data-order="Custom UGC">Already chosen? Pay now</a>
+      </div>
     </div>
   </div>
 
@@ -1512,12 +1518,12 @@
   </div>
   <div class="message-card order-card reveal" id="order">
     <div class="message-head">
-      <h3>Order a system</h3>
-      <p>Pay first, then place your order. The system is sent to your email.</p>
+      <h3>Order a system or UGC</h3>
+      <p>Pay first, then place your order. Your item is sent to your email.</p>
       <ol class="order-steps">
-        <li><b>Pay for your item</b> Pick an item and payment method. The price and how to pay appear in the form.</li>
+        <li><b>Pay for your item</b> Pick an item, then a payment method. How to pay appears once you pick one. For UGC we agreed on, choose "Custom UGC (already chosen)".</li>
         <li><b>Place your order</b> Add your email and your payment details so I can confirm it.</li>
-        <li><b>Get it by email</b> Once your payment is confirmed, I email the system to you.</li>
+        <li><b>Get it, then review it</b> Once your payment is confirmed, I email your item to you. Then leave a review with your order ID.</li>
       </ol>
     </div>
     <form class="message-form" id="orderForm" name="order" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
@@ -1537,12 +1543,23 @@
           <option>Partner System</option>
           <option>Profile System</option>
           <option>Concert Stage System</option>
+          <option value="Custom UGC">Custom UGC (already chosen)</option>
         </select>
       </label>
+      <div class="field-row" id="ugcFields" hidden>
+        <label class="field">
+          <span>Agreed price (৳)</span>
+          <input type="number" name="ugc_price" min="1" step="1" inputmode="numeric" placeholder="The price we agreed">
+        </label>
+        <label class="field">
+          <span>Which UGC?</span>
+          <input type="text" name="ugc_details" maxlength="120" placeholder="e.g. black bucket hat">
+        </label>
+      </div>
       <fieldset class="field pay-field">
         <span>Payment method</span>
         <div class="pay-options">
-          <label class="pay-option"><input type="radio" name="payment" value="Robux" required checked><span>Robux</span></label>
+          <label class="pay-option"><input type="radio" name="payment" value="Robux" required><span>Robux</span></label>
           <label class="pay-option"><input type="radio" name="payment" value="bKash"><span>bKash</span></label>
           <label class="pay-option"><input type="radio" name="payment" value="Nagad"><span>Nagad</span></label>
         </div>
@@ -1551,7 +1568,7 @@
       <div class="field-row">
         <label class="field">
           <span>Your email</span>
-          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="The system is sent here" required>
+          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="Your item is sent here" required>
         </label>
         <label class="field">
           <span>Roblox username</span>
@@ -1610,6 +1627,7 @@
           <option>Partner System</option>
           <option>Profile System</option>
           <option>Concert Stage System</option>
+          <option value="Custom UGC">Custom UGC</option>
         </select>
       </label>
       <fieldset class="field pay-field">
@@ -2061,6 +2079,12 @@ document.body.classList.remove('no-js');
   const userField = document.getElementById('reviewUserField');
   const orderFields = document.getElementById('reviewOrderFields');
   function updateMethod(){
+    // UGC is only sold for bKash / Nagad, so its review is checked by order ID
+    const ugc = form.elements['item'].value === 'Custom UGC';
+    const robuxRadio = form.querySelector('input[name="method"][value="Robux"]');
+    robuxRadio.disabled = ugc;
+    robuxRadio.closest('.pay-option').hidden = ugc;
+    if (ugc && robuxRadio.checked) form.querySelector('input[name="method"][value="bKash/Nagad"]').checked = true;
     const robux = form.elements['method'].value === 'Robux';
     userField.hidden = !robux;
     orderFields.hidden = robux;
@@ -2353,7 +2377,9 @@ document.querySelectorAll('.spot').forEach(function(card){
   const orderForm = document.getElementById('orderForm');
   if (messageForm) wire(messageForm, function(){ return 'Sent! I will get back to you soon.'; });
   if (orderForm) wire(orderForm, function(f){
-    return 'Order ' + f.elements['order_id'].value + ' received! Once I confirm your payment, I will email the system to ' + f.elements['email'].value + '.';
+    const id = f.elements['order_id'].value;
+    const what = f.elements['system'].value === 'Custom UGC' ? 'your UGC' : 'the system';
+    return 'Order ' + id + ' received! Once I confirm your payment, I will email ' + what + ' to ' + f.elements['email'].value + '. After you get it, leave a review in the Reviews section with order ID ' + id + '.';
   });
 
   // ---- shop: prices, payment instructions and "Order now" buttons ----
@@ -2371,17 +2397,31 @@ document.querySelectorAll('.spot').forEach(function(card){
     const txnInput = orderForm.elements['transaction_id'];
     const copyIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
+    const ugcFields = document.getElementById('ugcFields');
+    const ugcPrice = orderForm.elements['ugc_price'];
+    const ugcDetails = orderForm.elements['ugc_details'];
+
     function updatePay(){
       const name = orderForm.elements['system'].value;
       let method = orderForm.elements['payment'].value;
-      const p = shop.systems[name];
-      // items without a gamepass yet: Robux is greyed out and bKash is picked instead
+      const ugc = name === 'Custom UGC';
+      // UGC is priced per piece, so the buyer types the price we agreed; systems use the shop price
+      const p = ugc ? { bdt: Math.max(0, Math.floor(Number(ugcPrice.value) || 0)), usd: 0 } : shop.systems[name];
+      ugcFields.hidden = !ugc;
+      ugcPrice.required = ugc; ugcDetails.required = ugc;
+      // UGC is paid with bKash or Nagad only; systems without a gamepass yet can't take Robux either
       const robuxRadio = orderForm.querySelector('input[name="payment"][value="Robux"]');
-      robuxRadio.disabled = !p.gamepass;
-      robuxRadio.nextElementSibling.textContent = p.gamepass ? 'Robux' : 'Robux (soon)';
-      if (!p.gamepass && method === 'Robux') {
-        orderForm.querySelector('input[name="payment"][value="bKash"]').checked = true;
-        method = 'bKash';
+      robuxRadio.disabled = ugc || !p.gamepass;
+      robuxRadio.nextElementSibling.textContent = p.gamepass || ugc ? 'Robux' : 'Robux (soon)';
+      robuxRadio.closest('.pay-option').hidden = ugc;
+      robuxRadio.closest('.pay-options').classList.toggle('two', ugc);
+      if (robuxRadio.disabled && method === 'Robux') { robuxRadio.checked = false; method = ''; }
+      if (!method) {
+        // how to pay only appears once a payment method is picked
+        orderForm.elements['price'].value = '';
+        payBox.innerHTML = '<p>' + (ugc ? 'Pick <b>bKash</b> or <b>Nagad</b>' : 'Pick a payment method') + ' to see how to pay.</p>';
+        txnField.hidden = true; txnInput.required = false;
+        return;
       }
       if (method === 'Robux') {
         orderForm.elements['price'].value = fmt(p.robux) + ' Robux';
@@ -2392,16 +2432,18 @@ document.querySelectorAll('.spot').forEach(function(card){
         txnField.hidden = true; txnInput.required = false;
       } else {
         const number = method === 'bKash' ? shop.bkash : shop.nagad;
-        orderForm.elements['price'].value = '৳' + fmt(p.bdt) + ' (' + method + ')';
+        const amount = p.bdt ? '৳' + fmt(p.bdt) : 'the price we agreed';
+        orderForm.elements['price'].value = (p.bdt ? '৳' + fmt(p.bdt) : '?') + ' (' + method + ')';
         payBox.innerHTML =
-          '<span class="pay-amount">৳' + fmt(p.bdt) + ' <span class="pay-usd">about $' + fmt(p.usd) + ' USD</span></span>' +
-          '<p>Send <b>৳' + fmt(p.bdt) + '</b> with <b>' + method + ' Send Money</b> to this number, then enter the transaction ID below.</p>' +
+          '<span class="pay-amount">' + (p.bdt ? '৳' + fmt(p.bdt) : 'Agreed price') + (p.usd ? ' <span class="pay-usd">about $' + fmt(p.usd) + ' USD</span>' : '') + '</span>' +
+          '<p>Send <b>' + amount + '</b> with <b>' + method + ' Send Money</b> to this number, then enter the transaction ID below.</p>' +
           '<span class="pay-number">' + number + '<button class="copy-btn" type="button" data-copy="' + number + '" data-what="' + method + ' number" aria-label="Copy ' + method + ' number">' + copyIcon + '<span class="copy-text">Copy</span></button></span>';
         txnField.hidden = false; txnInput.required = true;
         if (window.wireCopy) window.wireCopy(payBox.querySelector('.copy-btn'));
       }
     }
     orderForm.addEventListener('change', updatePay);
+    ugcPrice.addEventListener('input', updatePay);
     orderForm.addEventListener('reset', function(){ setTimeout(updatePay, 0); });
     updatePay();
   }

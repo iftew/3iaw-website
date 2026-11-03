@@ -25,7 +25,8 @@ const GAMEPASSES = {
   'Profile System': 2057621402,
   'Concert Stage System': 2058263389,
 };
-const ITEMS = Object.keys(GAMEPASSES);
+// Custom UGC has no game pass: it's paid with bKash / Nagad, so only the order check applies
+const ITEMS = [...Object.keys(GAMEPASSES), 'Custom UGC'];
 
 const json = (body, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -115,6 +116,7 @@ export default async (req, context) => {
   try {
     let buyer;
     if (method === 'Robux') {
+      if (!GAMEPASSES[item]) return json({ error: 'UGC is paid with bKash or Nagad, so review it with your order ID.' }, 400);
       const username = String(body.username || '').trim();
       if (!/^\w{3,20}$/.test(username)) return json({ error: 'Enter the Roblox username you bought with.' }, 400);
       buyer = await confirmRobux(item, username);
