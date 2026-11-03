@@ -752,6 +752,10 @@
   .field input:hover, .field select:hover, .field textarea:hover{border-color:var(--grey-dim);}
   .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--grey-light); background:var(--surface-2);}
   .hp-field{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;}
+  .field input.bad, .field input.bad:hover, .field input.bad:focus{border-color:#ff6b6b; background:rgba(255,107,107,.1); box-shadow:0 0 0 3px rgba(255,107,107,.18);}
+  .field .field-hint{font:inherit; font-size:.82rem; text-transform:none; letter-spacing:0; color:#f08a8a;}
+  .field .field-hint[hidden]{display:none;}
+  .field-hint button{font:inherit; color:var(--white); background:none; border:0; padding:0; text-decoration:underline; text-underline-offset:3px; cursor:pointer;}
   .form-foot{display:flex; align-items:center; gap:1rem; flex-wrap:wrap;}
   .message-form button[disabled]{opacity:.6; cursor:default; transform:none;}
   .form-status{font-size:.9rem; color:var(--grey-mid);}
@@ -834,7 +838,7 @@
   .star-input{border:0; margin:0; padding:0; min-width:0;}
   .star-pick{display:inline-flex; flex-direction:row-reverse; justify-content:flex-end; gap:.25rem;}
   .star-pick input{position:absolute; opacity:0; pointer-events:none;}
-  .star-pick label{cursor:pointer; color:var(--line); transition:color .12s ease, transform .12s var(--ease);}
+  .star-pick label{cursor:pointer; color:var(--line); padding:5px; transition:color .12s ease, transform .12s var(--ease);}
   .star-pick label svg{display:block;}
   .star-pick label:hover, .star-pick label:hover ~ label,
   .star-pick input:checked ~ label{color:#f5c451;}
@@ -901,6 +905,7 @@
     .method .ico{width:40px; height:40px;}
     .method-value{font-size:.95rem;}
     .pay-options{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:.5rem;}
+    #reviewForm .pay-options{grid-template-columns:repeat(2, minmax(0, 1fr));}
     .pay-option span{justify-content:center; width:100%; padding:.7rem .4rem; gap:.4rem; font-size:.88rem;}
     .pay-usd{display:block; margin:.25rem 0 0;}
     .form-foot .btn{width:100%; justify-content:center;}
@@ -1616,7 +1621,7 @@
       </fieldset>
       <label class="field" id="reviewUserField">
         <span>Roblox username</span>
-        <input type="text" name="username" maxlength="20" placeholder="The account that owns the game pass" required>
+        <input type="text" name="username" maxlength="20" placeholder="Account that owns the pass" required>
       </label>
       <div class="field-row" id="reviewOrderFields" hidden>
         <label class="field">
@@ -2271,6 +2276,43 @@ document.querySelectorAll('.spot').forEach(function(card){
     const fixed = DOMAIN_FIXES[value.slice(at + 1).toLowerCase()];
     return fixed ? value.slice(0, at + 1) + fixed : null;
   }
+
+  // the email box turns red with a note under it while the address is badly formed or misspelled
+  function watchEmail(input){
+    const hint = document.createElement('span');
+    hint.className = 'field-hint';
+    hint.hidden = true;
+    hint.setAttribute('aria-live', 'polite');
+    input.insertAdjacentElement('afterend', hint);
+    let touched = false;
+    function check(){
+      const v = input.value.trim();
+      const fix = emailFix(v);
+      const bad = v !== '' && (fix || !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v));
+      // only complain once the person has left the box, then update live while they fix it
+      const show = bad && touched;
+      input.classList.toggle('bad', show);
+      input.setAttribute('aria-invalid', show ? 'true' : 'false');
+      hint.hidden = !show;
+      if (!show) return;
+      if (fix) {
+        hint.textContent = 'Did you mean ';
+        const use = document.createElement('button');
+        use.type = 'button';
+        use.textContent = fix;
+        use.addEventListener('click', function(){ input.value = fix; check(); input.focus(); });
+        hint.appendChild(use);
+        hint.appendChild(document.createTextNode('?'));
+      } else {
+        hint.textContent = 'This email looks wrong. Check it, like name@gmail.com';
+      }
+    }
+    input.addEventListener('blur', function(){ if (input.value.trim()) touched = true; check(); });
+    input.addEventListener('input', check);
+    input.form.addEventListener('submit', function(){ touched = true; check(); }, true);
+    input.form.addEventListener('reset', function(){ touched = false; setTimeout(check, 0); });
+  }
+  document.querySelectorAll('#orderForm input[name="email"], #reviewForm input[name="email"]').forEach(watchEmail);
 
   function wire(form, successText){
     const status = form.querySelector('.form-status');
