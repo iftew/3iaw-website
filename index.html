@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3Iaw | Roblox Developer</title>
+<meta name="description" content="3Iaw, Roblox Studio developer. Luau gameplay systems, UI and tools. Contact: pleasejoinmyteam@gmail.com · Discord: 6m3n">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0a0c;
+    --panel:#131316;
+    --surface:#1c1c20;
+    --surface-2:#25252a;
+    --line:#333339;
+    --line-soft:#242428;
+    --grey-dim:#75757d;
+    --grey-mid:#a2a2aa;
+    --grey-light:#d4d4d9;
+    --white:#f5f5f7;
+    --accent:#b39dfb;
+    --discord:#8b95f5;
+    --ok:#7fd1a4;
+    --radius:14px;
+    --font-display:'Baloo 2', system-ui, sans-serif;
+    --font-body:'Inter', system-ui, sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --ease: cubic-bezier(.2,.7,.2,1);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth; background:var(--void); scroll-padding-top:80px;}
+  body{
+    margin:0;
+    background:transparent;
+    color:var(--grey-light);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+    overflow-x:hidden;
+  }
+  img{max-width:100%;display:block;}
+  a{color:inherit;}
+  ::selection{background:var(--white); color:var(--void);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:6px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+    html{scroll-behavior:auto;}
+  }
+
+  .grid-bg{
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ---------- full-page animated avatar background ---------- */
+  .site-bg{position:fixed; inset:0; z-index:-1; overflow:hidden; background:var(--void);}
+  .avatar-home{
+    position:absolute; right:7vw; bottom:4vh;
+    width:min(66vh, 40vw, 620px); aspect-ratio:1;
+  }
+  .avatar-move, .avatar-face{position:absolute; inset:0; will-change:transform;}
+  .avatar-move{transform-origin:50% 94%;}
+  .avatar-face{transform-origin:50% 55%;}
+  .avatar-layer{position:absolute; inset:0; width:100%; height:100%; user-select:none; -webkit-user-drag:none; will-change:transform;}
+  /* layer cut-outs, measured on the 720px Roblox render */
+  .avatar-torso{position:absolute; inset:0; transform-origin:50% 94%; will-change:transform;}
+  .avatar-body{clip-path:inset(20% 31.25% 0 31.5%);}
+  .avatar-arm-l{clip-path:inset(20.5% 68.5% 37.5% 0); transform-origin:21.5% 25.5%;}
+  .avatar-arm-r{clip-path:inset(20.5% 0 37.5% 68.75%); transform-origin:78.5% 25.5%;}
+  .avatar-move{filter:drop-shadow(0 0 1.5px rgba(225,225,240,.55));}
+  .avatar-shadow{
+    position:absolute; left:50%; bottom:3.5%; width:44%; height:6%;
+    margin-left:-22%;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.75), transparent 70%);
+    will-change:transform, opacity;
+  }
+  @media (max-width: 760px){
+    .avatar-home{right:50%; margin-right:calc(min(70vh, 92vw) / -2); width:min(70vh, 92vw); bottom:2vh; opacity:.45;}
+  }
+  .site-bg-overlay{
+    position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse 90% 80% at 60% 45%, transparent 40%, rgba(10,10,12,0.75) 100%);
+  }
+  .site-bg-shine{
+    position:absolute; inset:-20% -70%;
+    background: linear-gradient(100deg, transparent 42%, rgba(255,255,255,0.3) 50%, transparent 58%);
+    mix-blend-mode:overlay;
+    transform:translateX(-120%);
+    animation: shineSweep 7s ease-in-out infinite;
+    pointer-events:none;
+  }
+  .site-bg-noise{
+    position:absolute; inset:0; opacity:.06; pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  @keyframes shineSweep{
+    0%, 58%{ transform:translateX(-120%); }
+    76%, 100%{ transform:translateX(120%); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .site-bg-shine{ animation:none; opacity:0; }
+    .site-bg-img{transform:translate(-50%,-50%) scale(1.02) !important;}
+  }
+
+  /* ---------- scroll progress ---------- */
+  .progress{
+    position:fixed; top:0; left:0; height:2px; width:100%; z-index:70;
+    background:linear-gradient(90deg, var(--grey-mid), var(--white));
+    transform-origin:0 50%; transform:scaleX(0);
+  }
+
+  /* ---------- nav ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding: 18px 6vw;
+    background:rgba(10,10,12,0.55);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    border-bottom:1px solid transparent;
+    transition: padding .25s var(--ease), background .25s ease, border-color .25s ease;
+  }
+  header.scrolled{padding:12px 6vw; background:rgba(10,10,12,0.85); border-bottom-color:var(--line-soft);}
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--font-display); font-weight:700; font-size:1.15rem;
+    color:var(--white); text-decoration:none;
+  }
+  nav ul{list-style:none; display:flex; gap:.4rem; margin:0; padding:0;}
+  nav a{
+    position:relative; display:block;
+    text-decoration:none; color:var(--grey-mid); font-size:0.93rem; font-weight:500;
+    padding:.45rem .85rem; border-radius:8px;
+    transition: color 0.15s ease, background .15s ease;
+  }
+  nav a:hover{color:var(--white); background:rgba(255,255,255,.05);}
+  nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
+  .nav-cta{
+    color:var(--void) !important; background:var(--white) !important; font-weight:600 !important;
+  }
+  .nav-cta:hover{background:var(--grey-light) !important;}
+
+  .brand-wrap{display:flex; align-items:center; gap:.7rem; min-width:0;}
+  .views{
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.25rem .6rem; border-radius:999px;
+    border:1px solid var(--line); background:rgba(19,19,22,.6);
+    font:500 .8rem var(--font-body); color:var(--grey-light); white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .views svg{color:var(--grey-mid);}
+  .views[hidden]{display:none;}
+  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+
+  .nav-toggle{
+    display:none;
+    width:42px; height:42px; border-radius:9px;
+    background:var(--panel); border:1px solid var(--line); color:var(--white);
+    align-items:center; justify-content:center; cursor:pointer;
+  }
+  .nav-toggle span{display:block; width:18px; height:2px; background:currentColor; border-radius:2px; position:relative; transition:background .2s;}
+  .nav-toggle span::before,.nav-toggle span::after{
+    content:""; position:absolute; left:0; width:18px; height:2px; background:currentColor; border-radius:2px;
+    transition: transform .25s var(--ease), top .25s var(--ease);
+  }
+  .nav-toggle span::before{top:-6px;}
+  .nav-toggle span::after{top:6px;}
+  .nav-open .nav-toggle span{background:transparent;}
+  .nav-open .nav-toggle span::before{top:0; transform:rotate(45deg);}
+  .nav-open .nav-toggle span::after{top:0; transform:rotate(-45deg);}
+
+  @media (max-width: 760px){
+    .nav-toggle{display:flex;}
+    nav{
+      position:fixed; inset:64px 16px auto 16px;
+      background:rgba(19,19,22,.97); border:1px solid var(--line); border-radius:var(--radius);
+      padding:.6rem; opacity:0; transform:translateY(-8px); pointer-events:none;
+      transition: opacity .2s ease, transform .2s var(--ease);
+      box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .nav-open nav{opacity:1; transform:none; pointer-events:auto;}
+    nav ul{flex-direction:column; gap:2px;}
+    nav a{padding:.8rem 1rem; font-size:1rem;}
+  }
+
+  /* ---------- mute toggle ---------- */
+  .mute-toggle{
+    position:fixed; right:1.4rem; bottom:1.4rem; z-index:60;
+    height:44px; padding:0 14px; gap:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(19,19,22,0.85);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    border:1px solid var(--line); border-radius:11px;
+    color:var(--grey-light); cursor:pointer;
+    font:500 .78rem var(--font-body);
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+  }
+  .mute-toggle:hover{ border-color:var(--grey-mid); color:var(--white); }
+  .mute-toggle:active{ transform:translateY(1px); }
+  .mute-toggle[aria-pressed="true"]{ color:var(--grey-dim); }
+  .eq{display:flex; align-items:flex-end; gap:2px; height:14px;}
+  .eq i{display:block; width:3px; background:currentColor; border-radius:1px; animation:eq 1s ease-in-out infinite;}
+  .eq i:nth-child(1){height:40%; animation-delay:-.2s;}
+  .eq i:nth-child(2){height:100%; animation-delay:-.5s;}
+  .eq i:nth-child(3){height:60%; animation-delay:-.8s;}
+  .mute-toggle[aria-pressed="true"] .eq i{animation:none; height:20%;}
+  @keyframes eq{0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)}}
+  .eq i{transform-origin:bottom;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative; min-height:calc(100vh - 70px);
+    display:flex; align-items:center; overflow:hidden;
+    padding: 4rem 6vw;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+    background: linear-gradient(100deg, rgba(10,10,12,0.75) 0%, rgba(10,10,12,0.3) 45%, transparent 65%);
+  }
+  .hero-grid{
+    position:absolute; inset:0; z-index:0; opacity:0.45;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 30% 50%, #000 30%, transparent 80%);
+            mask-image: radial-gradient(ellipse 80% 70% at 30% 50%, #000 30%, transparent 80%);
+  }
+  .hero-copy{position:relative; z-index:3; max-width:680px;}
+  .status-pill{
+    display:inline-flex; align-items:center; gap:.55rem;
+    padding:.4rem .85rem .4rem .7rem; margin-bottom:1.4rem;
+    border:1px solid var(--line); border-radius:999px;
+    background:rgba(19,19,22,.7); backdrop-filter:blur(6px);
+    font-size:.82rem; color:var(--grey-light); font-weight:500;
+  }
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--ok); position:relative;}
+  .status-dot::after{
+    content:""; position:absolute; inset:0; border-radius:50%; background:var(--ok);
+    animation: ping 1.8s cubic-bezier(0,0,.2,1) infinite;
+  }
+  @keyframes ping{75%,100%{transform:scale(2.6); opacity:0;}}
+  .kicker{font-size:0.98rem; color:var(--grey-mid); margin-bottom:0.6rem; font-weight:500;}
+  .kicker b{color:var(--white); font-weight:600;}
+  .name-mark{
+    font-family:var(--font-display); font-weight:800;
+    font-size:clamp(5rem, 17vw, 12rem);
+    line-height:0.85; letter-spacing:-0.02em;
+    margin:0 0 1.2rem 0;
+    background:linear-gradient(180deg, #fff 30%, #9a9aa2 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter: drop-shadow(0 8px 40px rgba(0,0,0,0.6));
+  }
+  .name-mark small{
+    display:block; margin-top:0.7rem;
+    font-family:var(--font-mono); font-weight:400; font-size:1rem;
+    letter-spacing:0.02em; color:var(--grey-mid);
+    -webkit-text-fill-color:var(--grey-mid);
+  }
+  .typed::after{content:"▍"; margin-left:2px; animation: blink 1s steps(1) infinite; color:var(--white); -webkit-text-fill-color:var(--white);}
+  @keyframes blink{50%{opacity:0}}
+  .hero-sub{font-size:1.1rem; color:var(--grey-mid); max-width:540px; margin:0 0 2rem 0;}
+  .hero-cta{display:flex; gap:0.9rem; flex-wrap:wrap;}
+  .btn{
+    display:inline-flex; align-items:center; gap:0.55rem;
+    padding:0.9rem 1.5rem; border-radius:10px;
+    font-weight:600; font-size:0.95rem; font-family:var(--font-body);
+    text-decoration:none; cursor:pointer;
+    border:1px solid transparent;
+    transition: transform 0.15s var(--ease), background 0.15s ease, border-color 0.15s ease, box-shadow .2s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn:active{transform: translateY(0);}
+  .btn svg{transition:transform .2s var(--ease);}
+  .btn:hover svg{transform:translateX(3px);}
+  .btn-solid{background:var(--white); color:var(--void); box-shadow:0 8px 30px rgba(255,255,255,.12);}
+  .btn-solid:hover{background:var(--grey-light); box-shadow:0 10px 40px rgba(255,255,255,.2);}
+  .btn-outline{background:rgba(19,19,22,.55); color:var(--grey-light); border-color:var(--line); backdrop-filter:blur(6px);}
+  .btn-outline:hover{border-color:var(--grey-mid); color:var(--white);}
+
+  .scroll-hint{
+    position:absolute; left:50%; bottom:1.8rem; z-index:3; transform:translateX(-50%);
+    width:24px; height:38px; border:1.5px solid var(--grey-dim); border-radius:14px;
+  }
+  .scroll-hint::after{
+    content:""; position:absolute; left:50%; top:7px; width:3px; height:7px; margin-left:-1.5px;
+    background:var(--grey-light); border-radius:2px; animation: wheel 1.8s ease-in-out infinite;
+  }
+  @keyframes wheel{0%{opacity:0; transform:translateY(0)} 30%{opacity:1} 100%{opacity:0; transform:translateY(12px)}}
+
+  @media (max-width: 600px){
+    .hero{padding-top:5rem; padding-bottom:5rem; min-height:auto;}
+    .scroll-hint{display:none;}
+  }
+
+  /* ---------- section shell ---------- */
+  section{padding: 6.5rem 6vw; border-bottom:1px solid var(--line-soft); position:relative;}
+  section:not(.hero){background-color:rgba(10,10,12,.72);}
+  .section-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:2rem; margin-bottom:3rem; flex-wrap:wrap;
+  }
+  .eyebrow{
+    display:block; font-family:var(--font-mono); font-size:.78rem; color:var(--grey-dim);
+    letter-spacing:.08em; text-transform:uppercase; margin-bottom:.5rem;
+  }
+  .section-head h2{
+    font-family:var(--font-display); font-weight:700;
+    font-size:clamp(1.9rem, 3.4vw, 2.6rem); line-height:1.1;
+    color:var(--white); margin:0;
+  }
+  .section-head p{max-width:420px; margin:0; color:var(--grey-dim); font-size:0.95rem;}
+
+  /* reveal on scroll */
+  .reveal{opacity:0; transform:translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease);}
+  .reveal.in{opacity:1; transform:none;}
+  .no-js .reveal{opacity:1; transform:none;}
+
+  /* spotlight cards */
+  .spot{position:relative; isolation:isolate; overflow:hidden;}
+  .spot::before{
+    content:""; position:absolute; inset:0; z-index:-1; opacity:0; transition:opacity .3s ease;
+    background: radial-gradient(380px circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.07), transparent 60%);
+  }
+  .spot:hover::before{opacity:1;}
+
+  /* ---------- about ---------- */
+  .about-grid{display:grid; grid-template-columns: 1.1fr 0.9fr; gap:3.5rem; align-items:start;}
+  .about-grid p{color:var(--grey-mid); font-size:1.04rem; max-width:56ch; margin:0;}
+  .about-grid p + p{margin-top:1rem;}
+  .about-grid p b{color:var(--white); font-weight:600;}
+  .stat-blocks{
+    display:grid; grid-template-columns:1fr 1fr; gap:1px;
+    background:var(--line-soft); border:1px solid var(--line-soft);
+    border-radius:var(--radius); overflow:hidden;
+  }
+  .stat-block{background:var(--panel); padding:1.6rem 1.4rem; transition:background .2s ease;}
+  .stat-block:hover{background:var(--surface);}
+  .stat-block .num{
+    font-family:var(--font-display); font-weight:800; color:var(--white);
+    font-size:1.9rem; display:block; margin-bottom:0.2rem; line-height:1.2;
+  }
+  .stat-block .label{font-size:0.85rem; color:var(--grey-dim);}
+  @media (max-width:800px){ .about-grid{grid-template-columns:1fr; gap:2.2rem;} }
+
+  /* ---------- skills ---------- */
+  .skill-groups{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem;}
+  .skill-group{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:1.6rem; transition:border-color .2s ease;
+  }
+  .skill-group:hover{border-color:var(--grey-dim);}
+  .skill-group h3{
+    display:flex; align-items:center; gap:.6rem;
+    font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.15rem; margin:0 0 1rem;
+  }
+  .ico{
+    width:34px; height:34px; border-radius:9px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--white);
+  }
+  .skill-cloud{display:flex; flex-wrap:wrap; gap:0.5rem;}
+  .chip{
+    padding:0.45rem 0.85rem; border:1px solid var(--line); border-radius:8px;
+    font-size:0.86rem; color:var(--grey-light); background:var(--surface);
+    transition: border-color 0.15s ease, transform 0.15s var(--ease), background 0.15s ease;
+  }
+  .chip:hover{border-color:var(--grey-mid); background:var(--surface-2); transform:translateY(-2px);}
+  @media (max-width:900px){ .skill-groups{grid-template-columns:1fr;} }
+
+  /* ---------- projects ---------- */
+  .project-grid{display:grid; grid-template-columns: repeat(6, 1fr); gap:1.1rem;}
+  .proj{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:1.8rem; min-height:230px;
+    display:flex; flex-direction:column; justify-content:space-between; gap:1.4rem;
+    transition: border-color 0.2s ease, transform .25s var(--ease);
+  }
+  .proj:hover{border-color:var(--grey-mid); transform:translateY(-3px);}
+  .proj-1{grid-column: span 4;}
+  .proj-2{grid-column: span 2;}
+  .proj-3{grid-column: span 3;}
+  .proj-4{grid-column: span 3;}
+  .proj-top{display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;}
+  .proj-tag{
+    font-family:var(--font-mono); font-size:0.7rem; color:var(--grey-mid);
+    border:1px solid var(--line); border-radius:6px; padding:0.25rem 0.55rem; white-space:nowrap;
+  }
+  .proj-num{font-family:var(--font-mono); font-size:.75rem; color:var(--grey-dim);}
+  .proj h3{font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.35rem; margin:0 0 0.5rem 0;}
+  .proj p{color:var(--grey-dim); font-size:0.92rem; margin:0; max-width:48ch;}
+  .proj-feature{
+    background:
+      linear-gradient(135deg, rgba(159,180,214,.08), transparent 55%),
+      var(--panel);
+  }
+  .code-peek{
+    font-family:var(--font-mono); font-size:.78rem; line-height:1.7; color:var(--grey-dim);
+    background:rgba(0,0,0,.35); border:1px solid var(--line-soft); border-radius:10px;
+    padding:.9rem 1rem; margin:0; overflow:auto; white-space:pre;
+  }
+  .code-peek .k{color:#c7a6f0;} .code-peek .f{color:#9fc7f0;} .code-peek .s{color:#a6d8b0;} .code-peek .c{color:#5d5d66;}
+  @media (max-width:900px){
+    .project-grid{grid-template-columns:1fr 1fr;}
+    .proj-1{grid-column:span 2;}
+    .proj-2,.proj-3,.proj-4{grid-column:span 1;}
+  }
+  @media (max-width:560px){
+    .project-grid{grid-template-columns:1fr;}
+    .proj-1,.proj-2,.proj-3,.proj-4{grid-column:span 1;}
+  }
+
+  /* ---------- games ---------- */
+  .group-title{
+    display:flex; align-items:center; gap:.65rem;
+    font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.2rem;
+    margin:0 0 1.1rem;
+  }
+  .game-grid + .group-title{margin-top:3rem;}
+  .group-dot{width:10px; height:10px; border-radius:3px; background:var(--grey-mid);}
+  .group-dot.own{background:var(--white); box-shadow:0 0 12px rgba(255,255,255,.5);}
+  .group-count{
+    font-family:var(--font-mono); font-size:.72rem; font-weight:500; color:var(--grey-dim);
+    border:1px solid var(--line); border-radius:999px; padding:.1rem .5rem;
+  }
+  .game-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem;}
+  .game{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    display:flex; flex-direction:column; overflow:hidden;
+    color:inherit; text-decoration:none;
+    transition: border-color 0.2s ease, transform .25s var(--ease);
+  }
+  .game:hover{border-color:var(--grey-mid); transform:translateY(-3px);}
+  .game.own{border-color:#3d3d45;}
+  .game-thumb{
+    aspect-ratio:16/9; position:relative; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    border-bottom:1px solid var(--line-soft);
+    background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      radial-gradient(circle at 30% 20%, #2c2f38, #141418 70%);
+  }
+  .game-thumb.dark{background:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px) 0 0/24px 24px,
+      radial-gradient(circle at 50% 120%, #262630, #060608 65%);}
+  .game-thumb.city{background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(180deg, #1a1d26, #2a2e3a);}
+  .game-thumb.mystic{background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
+      radial-gradient(circle at 70% 30%, #2e2a3c, #131318 70%);}
+  .game-thumb > img:first-child{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .5s var(--ease), filter .3s ease; filter:saturate(.9) brightness(.92);}
+  .game:hover .game-thumb > img:first-child{transform:scale(1.05); filter:none;}
+  .game-thumb.contain{background:#060607;}
+  .game-thumb.contain > img:first-child{object-fit:contain; padding:6% 0;}
+  .game-thumb::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, transparent 55%, rgba(10,10,12,.7)); pointer-events:none;}
+  .game-icon{
+    position:absolute; left:14px; bottom:12px; z-index:1; width:44px; height:44px; border-radius:11px;
+    border:2px solid rgba(255,255,255,.85); box-shadow:0 6px 20px rgba(0,0,0,.5); object-fit:cover;
+  }
+  .game-thumb.contain .game-icon{display:none;}
+  .game .game-thumb .game-badge{
+    position:absolute; right:12px; top:12px; z-index:1;
+    display:inline-flex; align-items:center; gap:.4rem;
+    font:600 .7rem/1 var(--font-body); letter-spacing:.04em; text-transform:uppercase;
+    color:var(--white); background:rgba(10,10,12,.72);
+    border:1px solid rgba(255,255,255,.18); border-radius:999px;
+    padding:.4rem .65rem .4rem .55rem;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    text-shadow:none; transform:none;
+  }
+  .game-badge.live .badge-dot{background:var(--ok); box-shadow:0 0 8px var(--ok);}
+  .badge-dot{width:6px; height:6px; border-radius:50%; background:#f5c451; box-shadow:0 0 8px #f5c451;}
+  .game-meta{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem 1rem; margin-top:1rem; font-size:.8rem; color:var(--grey-mid);}
+  .game-meta span{display:inline-flex; align-items:center; gap:.35rem;}
+  .game-play{margin-left:auto; color:var(--white); font-weight:600;}
+  .game:hover .game-play{text-decoration:underline; text-underline-offset:3px;}
+  .games-note{margin:1.6rem 0 0; font-size:.78rem; color:var(--grey-dim);}
+  .game-body{padding:1.3rem 1.4rem 1.5rem;}
+  .game-body h3{font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.3rem; margin:.8rem 0 .3rem;}
+  .game-body p{color:var(--grey-dim); font-size:.9rem; margin:0;}
+  @media (max-width:900px){ .game-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .game-grid{grid-template-columns:1fr;} }
+
+  /* ---------- services ---------- */
+  .offer-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin-bottom:3rem;}
+  .offer{
+    display:flex; gap:1.1rem; align-items:flex-start;
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius); padding:1.6rem;
+  }
+  .offer .ico{width:44px; height:44px; border-radius:11px;}
+  .offer h3{font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.25rem; margin:0 0 .3rem;}
+  .offer p{margin:0; color:var(--grey-dim); font-size:.93rem;}
+  .sys-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:1.1rem;}
+  .sys{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    overflow:hidden; display:flex; flex-direction:column;
+    transition:border-color .2s ease, transform .25s var(--ease);
+  }
+  .sys:hover{border-color:var(--grey-mid); transform:translateY(-3px);}
+  .sys-head{
+    position:relative; padding:1.5rem 1.6rem 1.4rem; min-height:190px;
+    display:flex; flex-direction:column; justify-content:space-between; gap:1rem;
+    border-bottom:1px solid var(--line-soft);
+    background:
+      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 0 0/28px 28px,
+      radial-gradient(circle at 85% 20%, #3a3d48, #121216 70%);
+  }
+  .sys-profile .sys-head{background:
+      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 0 0/28px 28px,
+      radial-gradient(circle at 15% 90%, #34363f, #111114 70%);}
+  .sys-concert .sys-head{background:
+      repeating-linear-gradient(115deg, transparent 0 60px, rgba(80,170,255,.07) 60px 64px),
+      radial-gradient(ellipse at 70% 0%, rgba(40,140,255,.55), transparent 60%),
+      radial-gradient(ellipse at 20% 100%, rgba(120,80,255,.35), transparent 55%),
+      #070b18;}
+  .sys-kicker{
+    display:flex; align-items:center; gap:.6rem;
+    font-size:.72rem; letter-spacing:.32em; text-transform:uppercase; color:var(--grey-light); font-weight:600;
+  }
+  .sys-logo{width:16px; height:16px; background:var(--grey-light); transform:rotate(15deg); border-radius:2px; box-shadow:inset 0 0 0 4px var(--grey-light), inset 0 0 0 9px #111;}
+  .sys-badge{
+    position:absolute; top:1.3rem; right:1.4rem;
+    display:inline-flex; align-items:center; gap:.45rem;
+    font-size:.72rem; font-weight:600; color:var(--white);
+    padding:.3rem .65rem .3rem .55rem; border-radius:999px;
+    background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.15); backdrop-filter:blur(4px);
+  }
+  .sys-badge .status-dot{width:7px; height:7px;}
+  .sys-title{
+    margin:0; font-family:var(--font-display); font-weight:800; font-style:italic;
+    font-size:clamp(2.2rem, 4vw, 3.1rem); line-height:.9; letter-spacing:-.01em; text-transform:uppercase;
+    background:linear-gradient(180deg, #fff 35%, #a9a9b2); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 18px rgba(0,0,0,.6));
+  }
+  .sys-bundle{grid-column:1 / -1;}
+  .sys-bundle .sys-head{background:
+      radial-gradient(circle at 8% 120%, rgba(255,120,190,.38), transparent 45%),
+      radial-gradient(circle at 38% -20%, rgba(120,150,255,.38), transparent 45%),
+      radial-gradient(circle at 70% 120%, rgba(90,220,200,.30), transparent 45%),
+      radial-gradient(circle at 100% 0%, rgba(185,166,255,.45), transparent 45%),
+      #0c0b16;}
+  .sys-bundle .sys-title{background:linear-gradient(180deg, #fff 30%, #b9a6ff); -webkit-background-clip:text; background-clip:text;}
+  .sys-bundle .sys-badge .status-dot, .sys-bundle .sys-badge .status-dot::after{background:#b9a6ff;}
+  .sys-bundle .sys-cta{background:#b9a6ff; color:#120b2a; box-shadow:0 8px 30px rgba(185,166,255,.25);}
+  .sys-bundle .sys-cta:hover{background:#cfc2ff;}
+  .bundle-grid{display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:.9rem;}
+  .bundle-item{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:1rem 1.05rem 1.1rem;}
+  .bundle-item h4{display:flex; align-items:center; gap:.55rem; margin:0 0 .7rem; font-family:var(--font-display); font-weight:600; font-size:1.05rem; color:var(--white);}
+  .bundle-ico{width:30px; height:30px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(185,166,255,.12); border:1px solid rgba(185,166,255,.3); color:#b9a6ff;}
+  .bundle-item ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.5rem;}
+  .bundle-item li{position:relative; padding-left:.95rem; font-size:.84rem; line-height:1.45; color:var(--grey-dim);}
+  .bundle-item li::before{content:""; position:absolute; left:0; top:.6em; width:5px; height:5px; border-radius:50%; background:#b9a6ff;}
+  .bundle-foot{display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items:center; gap:1.2rem 2.5rem;}
+  .bundle-foot .sys-cta{margin-top:0;}
+  @media (max-width:1100px){ .bundle-grid{grid-template-columns:repeat(2, minmax(0, 1fr));} .bundle-foot{grid-template-columns:minmax(0, 1fr) auto;} .bundle-foot .sys-perfect{grid-column:1 / -1; grid-row:2;} }
+  @media (max-width:560px){ .bundle-grid{grid-template-columns:minmax(0, 1fr);} .bundle-foot{grid-template-columns:minmax(0, 1fr);} .bundle-foot .sys-perfect{grid-row:auto;} .bundle-foot .sys-cta{width:100%; justify-content:center;} }
+  .sys-flyrace .sys-head{background:
+      radial-gradient(circle at 78% 30%, transparent 0 34px, rgba(170,255,90,.35) 34px 37px, transparent 37px),
+      radial-gradient(circle at 92% 72%, transparent 0 20px, rgba(170,255,90,.22) 20px 22px, transparent 22px),
+      linear-gradient(160deg, transparent 0 55%, rgba(255,255,255,.05) 55% 56%, transparent 56%),
+      radial-gradient(circle at 10% 0%, rgba(90,170,255,.45), transparent 55%),
+      radial-gradient(circle at 70% 120%, rgba(150,240,80,.35), transparent 55%),
+      #08111c;}
+  .sys-flyrace .sys-title{background:linear-gradient(180deg, #fff 30%, #b5f25a); -webkit-background-clip:text; background-clip:text;}
+  .sys-flyrace .sys-feats li svg{color:#b5f25a;}
+  .sys-flyrace .sys-badge .status-dot, .sys-flyrace .sys-badge .status-dot::after{background:#b5f25a;}
+  .sys-flyrace .sys-cta{background:#b5f25a; color:#132003; box-shadow:0 8px 30px rgba(181,242,90,.22);}
+  .sys-flyrace .sys-cta:hover{background:#c8f784;}
+  .sys-rowboat .sys-head{background:
+      repeating-radial-gradient(ellipse 120% 40% at 50% 120%, transparent 0 18px, rgba(90,220,210,.07) 18px 20px),
+      radial-gradient(circle at 20% 0%, rgba(120,200,255,.35), transparent 55%),
+      radial-gradient(circle at 85% 110%, rgba(40,200,180,.5), transparent 55%),
+      #07121a;}
+  .sys-rowboat .sys-title{background:linear-gradient(180deg, #fff 30%, #5fe0cf); -webkit-background-clip:text; background-clip:text;}
+  .sys-rowboat .sys-feats li svg{color:#5fe0cf;}
+  .sys-rowboat .sys-badge .status-dot, .sys-rowboat .sys-badge .status-dot::after{background:#5fe0cf;}
+  .sys-rowboat .sys-cta{background:#5fe0cf; color:#03201c; box-shadow:0 8px 30px rgba(95,224,207,.22);}
+  .sys-rowboat .sys-cta:hover{background:#86eade;}
+  .sys-kite .sys-head{background:
+      linear-gradient(135deg, transparent 0 58%, rgba(255,90,140,.22) 58% 59%, transparent 59%),
+      linear-gradient(35deg, transparent 0 66%, rgba(255,214,90,.22) 66% 67%, transparent 67%),
+      radial-gradient(circle at 80% 15%, rgba(255,110,150,.5), transparent 50%),
+      radial-gradient(circle at 15% 110%, rgba(70,170,255,.45), transparent 55%),
+      #0a0e1a;}
+  .sys-kite .sys-title{background:linear-gradient(180deg, #fff 30%, #ff8fb1); -webkit-background-clip:text; background-clip:text;}
+  .sys-kite .sys-feats li svg{color:#ff8fb1;}
+  .sys-kite .sys-badge .status-dot, .sys-kite .sys-badge .status-dot::after{background:#ff8fb1;}
+  .sys-kite .sys-cta{background:#ff8fb1; color:#1f0610; box-shadow:0 8px 30px rgba(255,143,177,.25);}
+  .sys-kite .sys-cta:hover{background:#ffabc5;}
+  .sys-donation .sys-head{background:
+      radial-gradient(circle at 85% 110%, rgba(255,196,60,.5), transparent 55%),
+      radial-gradient(circle at 10% 0%, rgba(60,200,120,.35), transparent 55%),
+      repeating-radial-gradient(circle at 85% 110%, transparent 0 26px, rgba(255,210,90,.05) 26px 28px),
+      #0d0f0a;}
+  .sys-donation .sys-title{background:linear-gradient(180deg, #fff 30%, #ffc94a); -webkit-background-clip:text; background-clip:text;}
+  .sys-donation .sys-feats li svg{color:#ffc94a;}
+  .sys-donation .sys-badge .status-dot, .sys-donation .sys-badge .status-dot::after{background:#ffc94a;}
+  .sys-donation .sys-cta{background:#ffc94a; color:#1a1302; box-shadow:0 8px 30px rgba(255,201,74,.22);}
+  .sys-donation .sys-cta:hover{background:#ffd877;}
+  .sys-halloween .sys-head{background:
+      radial-gradient(circle at 18% 115%, rgba(255,122,24,.55), transparent 55%),
+      radial-gradient(circle at 92% 0%, rgba(140,70,255,.45), transparent 55%),
+      repeating-linear-gradient(-35deg, transparent 0 44px, rgba(255,140,40,.06) 44px 47px),
+      #120a10;}
+  .sys-halloween .sys-title{background:linear-gradient(180deg, #fff 30%, #ff9a3c); -webkit-background-clip:text; background-clip:text;}
+  .sys-halloween .sys-feats li svg{color:#ff9a3c;}
+  .sys-halloween .sys-badge .status-dot{background:#ff9a3c;}
+  .sys-halloween .sys-badge .status-dot::after{background:#ff9a3c;}
+  .sys-halloween .sys-cta{background:#ff8a2a; color:#1a0b02; box-shadow:0 8px 30px rgba(255,138,42,.25);}
+  .sys-halloween .sys-cta:hover{background:#ffa456;}
+  .sys-note{margin:0; font-size:.82rem; color:var(--grey-dim); line-height:1.5;}
+  .sys-concert .sys-title{background:linear-gradient(180deg, #fff 30%, #4fb4ff); -webkit-background-clip:text; background-clip:text;}
+  .sys-body{padding:1.4rem 1.6rem 1.6rem; display:flex; flex-direction:column; gap:1.1rem; flex:1;}
+  .sys-body > p{margin:0; color:var(--grey-mid); font-size:.95rem;}
+  .sys-feats{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.55rem 1.2rem;}
+  .sys-feats li{display:flex; gap:.5rem; align-items:flex-start; font-size:.86rem; color:var(--grey-dim); line-height:1.45;}
+  .sys-feats li svg{flex:none; margin-top:.2rem; color:var(--ok);}
+  .sys-concert .sys-feats li svg{color:#4fb4ff;}
+  .sys-feats b{color:var(--grey-light); font-weight:600;}
+  .sys-perfect{display:flex; flex-direction:column; gap:.5rem;}
+  .sys-label{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--grey-dim);}
+  .sys-perfect .chip{font-size:.8rem; padding:.35rem .7rem;}
+  .sys-cta{align-self:flex-start; margin-top:auto;}
+  .sys-concert .sys-cta{background:#4fb4ff; color:#04101f; box-shadow:0 8px 30px rgba(79,180,255,.25);}
+  .sys-concert .sys-cta:hover{background:#7cc7ff;}
+  .sys-soon{border-style:dashed; background:rgba(19,19,22,.6); justify-content:center;}
+  .soon-inner{padding:2.4rem 1.8rem; text-align:center; display:flex; flex-direction:column; align-items:center; gap:.7rem;}
+  .soon-plus{
+    width:56px; height:56px; border-radius:14px; border:1px dashed var(--grey-dim);
+    display:flex; align-items:center; justify-content:center; font:300 2rem var(--font-body); color:var(--grey-light);
+  }
+  .soon-inner h3{margin:.3rem 0 0; font-family:var(--font-display); font-weight:700; color:var(--white); font-size:1.4rem;}
+  .soon-inner p{margin:0 0 .6rem; color:var(--grey-dim); max-width:34ch; font-size:.92rem;}
+  @media (max-width:900px){ .sys-grid, .offer-grid{grid-template-columns:1fr;} }
+  @media (max-width:520px){ .sys-feats{grid-template-columns:1fr;} .sys-badge{position:static; align-self:flex-start;} }
+
+  /* ---------- achievements timeline ---------- */
+  .timeline{position:relative; padding-left:2.8rem; max-width:720px;}
+  .timeline::before{
+    content:""; position:absolute; left:0.95rem; top:0.4rem; bottom:0.4rem; width:1px;
+    background:linear-gradient(180deg, var(--line), var(--grey-mid));
+  }
+  .t-item{position:relative; padding-bottom:2.6rem;}
+  .t-item:last-child{padding-bottom:0;}
+  .t-num{
+    position:absolute; left:-2.8rem; top:0;
+    width:1.95rem; height:1.95rem; border-radius:7px;
+    background:var(--panel); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:0.85rem; color:var(--grey-light);
+  }
+  .t-item.current .t-num{background:var(--white); color:var(--void); border-color:var(--white); box-shadow:0 0 0 6px rgba(255,255,255,.08);}
+  .t-item h3{font-family:var(--font-display); font-weight:600; color:var(--white); margin:0 0 0.35rem 0; font-size:1.15rem;}
+  .t-item p{margin:0; color:var(--grey-dim); font-size:0.93rem; max-width:52ch;}
+  .t-when{font-family:var(--font-mono); font-size:0.74rem; color:var(--grey-dim); margin-bottom:0.3rem; display:block; text-transform:uppercase; letter-spacing:.06em;}
+
+  /* ---------- contact ---------- */
+  .contact{border-bottom:none;}
+  .contact-card{
+    display:grid; grid-template-columns:1.1fr 1fr; gap:3rem; align-items:center;
+    border:1px solid var(--line); border-radius:20px;
+    padding:clamp(1.8rem, 4vw, 3.2rem);
+    background:
+      radial-gradient(600px circle at 0% 0%, rgba(167,139,250,.12), transparent 60%),
+      var(--panel);
+  }
+  .contact h2{
+    font-family:var(--font-display); font-weight:800;
+    font-size:clamp(2.1rem, 5vw, 3.4rem);
+    color:var(--white); margin:0 0 0.8rem 0; line-height:1.03;
+  }
+  .contact p{color:var(--grey-mid); max-width:44ch; margin:0;}
+  .contact-methods{display:flex; flex-direction:column; gap:.8rem;}
+  .method{
+    display:flex; align-items:center; gap:1rem;
+    padding:1rem 1rem 1rem 1.1rem;
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    transition:border-color .2s ease, background .2s ease, transform .2s var(--ease);
+  }
+  .method:hover{border-color:var(--grey-mid); background:var(--surface-2); transform:translateY(-2px);}
+  .method .ico{width:44px; height:44px; border-radius:11px;}
+  .method.discord .ico{color:var(--discord); background:rgba(139,149,245,.1); border-color:rgba(139,149,245,.3);}
+  .method-body{flex:1; min-width:0;}
+  .method-label{display:block; font-size:.74rem; color:var(--grey-dim); text-transform:uppercase; letter-spacing:.07em; font-family:var(--font-mono);}
+  .method-value{
+    display:block; color:var(--white); font-weight:600; font-size:1.02rem; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  a.method-value:hover{text-decoration:underline; text-underline-offset:3px;}
+  .copy-btn{
+    flex:none; display:inline-flex; align-items:center; gap:.4rem;
+    padding:.55rem .8rem; border-radius:8px;
+    background:transparent; border:1px solid var(--line); color:var(--grey-light);
+    font:500 .82rem var(--font-body); cursor:pointer;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .copy-btn:hover{border-color:var(--grey-mid); color:var(--white); background:rgba(255,255,255,.04);}
+  .copy-btn.done{color:var(--ok); border-color:rgba(127,209,164,.45);}
+  .contact-note{font-size:.82rem; color:var(--grey-dim); margin-top:.3rem;}
+  @media (max-width:860px){ .contact-card{grid-template-columns:1fr; gap:2rem;} }
+  @media (max-width:420px){ .copy-btn .copy-text{display:none;} }
+
+  /* ---------- message form ---------- */
+  .message-card{
+    margin-top:1.1rem;
+    display:grid; grid-template-columns:0.8fr 1.2fr; gap:3rem; align-items:start;
+    border:1px solid var(--line); border-radius:20px; background:var(--panel);
+    padding:clamp(1.8rem, 4vw, 3.2rem);
+  }
+  .message-head h3{font-family:var(--font-display); font-weight:700; color:var(--white); font-size:clamp(1.6rem, 3vw, 2.1rem); line-height:1.1; margin:0 0 .6rem;}
+  .message-head p{margin:0; color:var(--grey-mid); max-width:36ch;}
+  .message-form{display:flex; flex-direction:column; gap:1rem;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  .field{display:flex; flex-direction:column; gap:.4rem;}
+  .field[hidden]{display:none;}
+  .field span{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--grey-dim);}
+  .field input, .field select, .field textarea{
+    width:100%; font:inherit; font-size:.95rem; color:var(--white);
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:.8rem .9rem; outline:none; resize:vertical;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .field select{appearance:none; -webkit-appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a2a2aa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat; background-position:right .9rem center; padding-right:2.4rem;}
+  .field select option{background:var(--panel); color:var(--white);}
+  .field input::placeholder, .field textarea::placeholder{color:var(--grey-dim);}
+  .field input:hover, .field select:hover, .field textarea:hover{border-color:var(--grey-dim);}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--grey-light); background:var(--surface-2);}
+  .hp-field{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;}
+  .form-foot{display:flex; align-items:center; gap:1rem; flex-wrap:wrap;}
+  .message-form button[disabled]{opacity:.6; cursor:default; transform:none;}
+  .form-status{font-size:.9rem; color:var(--grey-mid);}
+  .form-status.ok{color:var(--ok);}
+  .form-status.err{color:#f08a8a;}
+  @media (max-width:860px){ .message-card{grid-template-columns:1fr; gap:1.6rem;} }
+  @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
+
+  .order-card{margin-top:2.2rem;}
+  .pay-box{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:1rem 1.1rem; display:flex; flex-direction:column; gap:.5rem;
+  }
+  .pay-amount{font-family:var(--font-display); font-weight:800; font-size:1.6rem; color:var(--white); line-height:1.1;}
+  .pay-box p{margin:0; color:var(--grey-mid); font-size:.9rem;}
+  .pay-box b{color:var(--white);}
+  .pay-number{
+    display:inline-flex; align-items:center; gap:.6rem; align-self:flex-start;
+    font-family:var(--font-mono); font-size:1rem; color:var(--white);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:.45rem .5rem .45rem .8rem;
+  }
+  .pay-number .copy-btn{padding:.35rem .6rem;}
+  .pay-link{align-self:flex-start;}
+  .sys-price{display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap;}
+  .sys-price b{font-family:var(--font-display); font-weight:800; font-size:1.5rem; color:var(--white);}
+  .sys-price span{color:var(--grey-dim); font-size:.88rem;}
+  .sys-price .usd{color:var(--grey-light); font-weight:600; padding:.1rem .5rem; border:1px solid var(--line); border-radius:999px; font-size:.78rem;}
+  .pay-usd{font-family:var(--font-body); font-weight:500; font-size:.85rem; color:var(--grey-mid); margin-left:.3rem;}
+  .sys-price .soon{font-family:var(--font-body); font-size:.7rem; font-weight:600; color:var(--grey-mid); border:1px solid var(--line); border-radius:999px; padding:.1rem .45rem; vertical-align:middle;}
+  .sys-price small{flex-basis:100%; color:var(--grey-dim); font-size:.75rem;}
+  .order-steps{list-style:none; counter-reset:step; margin:1.6rem 0 0; padding:0; display:flex; flex-direction:column; gap:1rem;}
+  .order-steps li{counter-increment:step; position:relative; padding-left:2.6rem; color:var(--grey-dim); font-size:.9rem; line-height:1.5;}
+  .order-steps li::before{
+    content:counter(step); position:absolute; left:0; top:0;
+    width:1.8rem; height:1.8rem; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2); border:1px solid var(--line);
+    font:700 .85rem var(--font-display); color:var(--white);
+  }
+  .order-steps b{display:block; color:var(--white); font-weight:600; font-size:.95rem;}
+  .pay-field{border:0; margin:0; padding:0; min-width:0;}
+  .pay-options{display:flex; gap:.6rem; flex-wrap:wrap;}
+  .pay-option{position:relative; cursor:pointer;}
+  .pay-option input{position:absolute; opacity:0; pointer-events:none;}
+  .pay-option span{
+    display:inline-flex; align-items:center; gap:.5rem;
+    padding:.7rem 1.1rem; border-radius:10px;
+    border:1px solid var(--line); background:var(--surface);
+    font:600 .92rem var(--font-body); color:var(--grey-light); text-transform:none; letter-spacing:0;
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .pay-option span::before{content:""; flex:none; width:14px; height:14px; border-radius:50%; border:2px solid var(--grey-dim); transition:border-color .15s ease, box-shadow .15s ease;}
+  .pay-option:hover span{border-color:var(--grey-dim);}
+  .pay-option input:checked + span{border-color:var(--white); background:var(--surface-2); color:var(--white);}
+  .pay-option input:checked + span::before{border-color:var(--white); box-shadow:inset 0 0 0 3px var(--surface-2), inset 0 0 0 8px var(--white);}
+  .pay-option input:disabled + span{opacity:.4; cursor:not-allowed;}
+  .pay-option input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* toast */
+  .toast{
+    position:fixed; left:50%; bottom:1.6rem; z-index:80;
+    transform:translate(-50%, 20px); opacity:0; pointer-events:none;
+    background:var(--white); color:var(--void);
+    padding:.7rem 1.1rem; border-radius:10px; font-weight:600; font-size:.9rem;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    transition: opacity .25s ease, transform .25s var(--ease);
+  }
+  .toast.show{opacity:1; transform:translate(-50%, 0);}
+
+  footer{
+    padding:1.8rem 6vw;
+    display:flex; justify-content:space-between; align-items:center;
+    color:var(--grey-dim); font-size:0.84rem;
+    flex-wrap:wrap; gap:0.8rem;
+    background:rgba(10,10,12,.9); border-top:1px solid var(--line-soft);
+  }
+  footer a{color:var(--grey-mid); text-decoration:none;}
+  footer a:hover{color:var(--white);}
+  .to-top{display:inline-flex; align-items:center; gap:.4rem;}
+
+  /* ---------- phone polish ---------- */
+  /* long unbreakable text (the email address) must not widen its card */
+  .contact-card{grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr);}
+  .contact-card > *, .message-card > *, .method-body{min-width:0;}
+  .method-value{white-space:normal; overflow-wrap:anywhere; line-height:1.35;}   /* email breaks after @ instead of being cut off */
+  .message-card{grid-template-columns:minmax(0, .8fr) minmax(0, 1.2fr);}
+  @media (max-width:860px){ .contact-card, .message-card{grid-template-columns:minmax(0, 1fr);} }
+
+  @media (max-width:560px){
+    header, header.scrolled{padding:14px 20px;}
+    section{padding:4rem 20px;}
+    .hero{padding:3.5rem 20px 4.5rem; min-height:auto;}
+    .status-pill{font-size:.78rem; margin-bottom:1.1rem;}
+    .hero-sub{font-size:1rem; margin-bottom:1.6rem;}
+    .hero-cta{flex-direction:column; align-items:stretch; gap:.7rem;}
+    .hero-cta .btn{justify-content:center;}
+    .section-head{margin-bottom:2rem; gap:.8rem;}
+    .section-head p{font-size:.92rem;}
+    .about-grid p{font-size:.98rem;}
+    .stat-block{padding:1.15rem 1rem;}
+    .stat-block .num{font-size:1.55rem;}
+    .skill-group{padding:1.25rem;}
+    .group-title{font-size:1.1rem;}
+    .game-grid + .group-title{margin-top:2.4rem;}
+    .game-body{padding:1.1rem 1.15rem 1.25rem;}
+    .game-body h3{font-size:1.2rem;}
+    .offer{flex-direction:column; gap:.8rem; padding:1.25rem;}
+    .offer-grid{margin-bottom:2.4rem;}
+    .sys-head{padding:1.25rem; min-height:160px;}
+    .sys-body{padding:1.25rem; gap:1rem;}
+    .soon-inner{padding:2rem 1.25rem;}
+    .contact-card, .message-card{padding:1.5rem 1.25rem; border-radius:16px; gap:1.6rem;}
+    .order-card{margin-top:1.6rem;}
+    .method{padding:.85rem; gap:.75rem;}
+    .method .ico{width:40px; height:40px;}
+    .method-value{font-size:.95rem;}
+    .pay-options{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:.5rem;}
+    .pay-option span{justify-content:center; width:100%; padding:.7rem .4rem; gap:.4rem; font-size:.88rem;}
+    .pay-usd{display:block; margin:.25rem 0 0;}
+    .form-foot .btn{width:100%; justify-content:center;}
+    .copy-btn{min-height:40px; min-width:40px; justify-content:center;}
+    .proj-tag{font-size:.75rem;}
+    .game .game-thumb .game-badge{font-size:.75rem;}
+    .timeline{padding-left:2.6rem;}
+    /* the sound button shrinks to an icon and the footer leaves room for it */
+    .mute-toggle{right:16px; bottom:16px; padding:0; width:44px;}
+    #muteLabel{display:none;}
+    footer{padding:1.6rem 20px 5.5rem; flex-direction:column; align-items:flex-start;}
+  }
+</style>
+</head>
+<body class="no-js">
+
+
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<div class="site-bg" aria-hidden="true">
+  <div class="avatar-home" id="avatarHome">
+    <div class="avatar-shadow" id="avatarShadow"></div>
+    <div class="avatar-move" id="avatarMove">
+      <div class="avatar-face" id="avatarFace">
+        <div class="avatar-torso" id="avatarTorso">
+          <img class="avatar-layer avatar-arm-l" id="avatarArmL" alt="">
+          <img class="avatar-layer avatar-arm-r" id="avatarArmR" alt="">
+          <img class="avatar-layer avatar-body" id="avatarBody" src="assets/avatar.png" alt="">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="site-bg-overlay"></div>
+  <div class="site-bg-shine"></div>
+  <div class="site-bg-noise"></div>
+</div>
+
+<header id="siteHeader">
+  <div class="brand-wrap">
+    <a href="#top" class="brand">Created By 3Iaw</a>
+    <span class="views" id="views" title="Site views" hidden><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.9"/></svg><span id="viewsCount"></span><span class="sr-only"> views</span></span>
+  </div>
+  <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav"><span></span></button>
+  <nav id="siteNav" aria-label="Main">
+    <ul>
+      <li><a href="#about">About</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#projects">Work</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#achievements">Journey</a></li>
+      <li><a href="#contact" class="nav-cta">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<audio id="bgAudio" src="assets/music.mp3" preload="auto"></audio>
+<button id="muteToggle" class="mute-toggle" type="button" aria-label="Mute background music" aria-pressed="false">
+  <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+  <span id="muteLabel">Sound on</span>
+</button>
+
+<main>
+<section class="hero" id="top">
+  <div class="hero-grid grid-bg"></div>
+
+  <div class="hero-copy">
+    <div class="status-pill reveal"><span class="status-dot"></span>Systems available now · Open for perm dev</div>
+    <div class="kicker reveal">Developer, <b>raised on Roblox Studio</b></div>
+    <h1 class="name-mark reveal">3Iaw<small><span id="typed" class="typed">Luau scripter</span></small></h1>
+    <p class="hero-sub reveal">I build things, on the baseplate and off it. Gameplay systems, UI and tools, from Roblox Studio scripts to everything built around them.</p>
+    <div class="hero-cta reveal">
+      <a href="#projects" class="btn btn-solid">See the work
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#services" class="btn btn-outline">Systems &amp; services</a>
+    </div>
+  </div>
+  <a href="#about" class="scroll-hint" aria-label="Scroll to About"></a>
+</section>
+
+<section id="about" class="grid-bg">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">01 · About</span>
+      <h2>Scripting since the first baseplate.</h2>
+    </div>
+    <p>Where the habit started, and where it's headed.</p>
+  </div>
+  <div class="about-grid">
+    <div class="reveal">
+      <p>I started building in Roblox Studio the way a lot of people my age did: scripting small mechanics, breaking them, and figuring out why. That turned into a habit of <b>shipping things</b>: game mechanics, tools, and utility scripts.</p>
+      <p>Most of what I build lives in <b>Luau</b>, from one-off gameplay systems to reusable modules I carry between projects. Still learning, still shipping.</p>
+    </div>
+    <div class="stat-blocks reveal">
+      <div class="stat-block">
+        <span class="num">Luau</span>
+        <span class="label">Primary scripting language</span>
+      </div>
+      <div class="stat-block">
+        <span class="num">Studio</span>
+        <span class="label">Built mainly in Roblox Studio</span>
+      </div>
+      <div class="stat-block">
+        <span class="num">8</span>
+        <span class="label">Roblox games built or worked on</span>
+      </div>
+      <div class="stat-block">
+        <span class="num">850K+</span>
+        <span class="label">Visits across games I've built and worked on</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">02 · Skills</span>
+      <h2>What I work with.</h2>
+    </div>
+    <p>The toolkit behind the builds.</p>
+  </div>
+  <div class="skill-groups">
+    <div class="skill-group spot reveal">
+      <h3><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Scripting</h3>
+      <div class="skill-cloud">
+        <span class="chip">Luau / Lua</span>
+        <span class="chip">Python</span>
+        <span class="chip">Client/server logic</span>
+        <span class="chip">ModuleScripts</span>
+      </div>
+    </div>
+    <div class="skill-group spot reveal">
+      <h3><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z M3 7l9 5 9-5 M12 12v10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>Game dev</h3>
+      <div class="skill-cloud">
+        <span class="chip">Roblox Studio</span>
+        <span class="chip">Game mechanics design</span>
+        <span class="chip">UI / UX for tools</span>
+      </div>
+    </div>
+    <div class="skill-group spot reveal">
+      <h3><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="9" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M6 8.5v7M18 11.5c0 3-3 4-9.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>Workflow</h3>
+      <div class="skill-cloud">
+        <span class="chip">Claude AI (pro workflow)</span>
+        <span class="chip">AI-assisted development</span>
+        <span class="chip">Version control (Git)</span>
+        <span class="chip">Debugging</span>
+        <span class="chip">Problem solving</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="projects" class="grid-bg">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">03 · Work</span>
+      <h2>Things I build.</h2>
+    </div>
+    <p>Recent Roblox projects: games I made myself, and games I've worked on as a developer.</p>
+  </div>
+
+  <h3 class="group-title reveal"><span class="group-dot own"></span>My own games <span class="group-count">3</span></h3>
+  <div class="game-grid">
+    <a class="game own spot reveal" href="https://www.roblox.com/games/112354162426135/Bangali-Era" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Bangali_Era_thumb.jpg" alt="Bangali Era on Roblox" loading="lazy">
+        <img class="game-icon" src="assets/games/Bangali_Era_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Creator · Developer</span>
+          <span class="proj-num">01</span>
+        </div>
+        <h3>Bangali Era</h3>
+        <p>Multiplayer minigames, social hangouts and cultural activities inspired by everyday life in Bangladesh.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>33K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>71 favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game own spot reveal" href="https://www.roblox.com/games/73713754659735/Ondhokar" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Ondhokar_thumb.jpg" alt="Ondhokar on Roblox" loading="lazy">
+        <span class="game-badge live"><span class="badge-dot"></span>Out now</span><img class="game-icon" src="assets/games/Ondhokar_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Creator · Developer</span>
+          <span class="proj-num">02</span>
+        </div>
+        <h3>Ondhokar</h3>
+        <p>My horror game, now released on Roblox. Step into the dark if you dare.</p>
+        <div class="game-meta">
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game own spot reveal" href="https://www.roblox.com/games/107121101445653/CTG-CITY" target="_blank" rel="noopener">
+      <div class="game-thumb contain">
+        <img src="assets/games/CTG_CITY_icon.jpg" alt="CTG CITY on Roblox" loading="lazy">
+        <span class="game-badge"><span class="badge-dot"></span>Coming soon</span><img class="game-icon" src="assets/games/CTG_CITY_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Creator · Developer</span>
+          <span class="proj-num">03</span>
+        </div>
+        <h3>CTG CITY</h3>
+        <p>A city experience named after Chittagong, coming soon to Roblox.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>290+ visits</span>
+          <span class="game-play">View on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <h3 class="group-title reveal"><span class="group-dot"></span>Worked on as a developer <span class="group-count">5</span></h3>
+  <div class="game-grid">
+    <a class="game spot reveal" href="https://www.roblox.com/games/110473972657767/Bangali-Hood" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Bangali_Hood_thumb.jpg" alt="Bangali Hood on Roblox" loading="lazy">
+        <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Bangali_Hood_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">04</span>
+        </div>
+        <h3>Bangali Hood</h3>
+        <p>A proper chill hangout for the Bangladeshi community, with an adda spot for group chats, a food corner and more.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>560K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>710+ favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game spot reveal" href="https://www.roblox.com/games/118539730361579/Bangla-Town" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Bangla_Town_thumb.jpg" alt="Bangla Town on Roblox" loading="lazy">
+        <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Bangla_Town_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">05</span>
+        </div>
+        <h3>Bangla Town</h3>
+        <p>A chill hangout with real Bangladeshi vibes: adda spots, a concert stage for singing and more.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>210K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>620+ favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game spot reveal" href="https://www.roblox.com/games/134884285482428/Lumina-Hangout" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Lumina_Hangout_thumb.jpg" alt="Lumina Hangout on Roblox" loading="lazy">
+        <span class="game-badge live"><span class="badge-dot"></span>Working on now</span><img class="game-icon" src="assets/games/Lumina_Hangout_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">06</span>
+        </div>
+        <h3>Lumina Hangout</h3>
+        <p>A peaceful, aesthetic hangout to relax, listen to music, chat and take screenshots with friends.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>2.8K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>24 favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game spot reveal" href="https://www.roblox.com/games/134108983461979/Bengali-Society" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Bengali_Society_thumb.jpg" alt="Bengali Society on Roblox" loading="lazy">
+        <span class="game-badge live"><span class="badge-dot"></span>Just updated</span><img class="game-icon" src="assets/games/Bengali_Society_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">07</span>
+        </div>
+        <h3>Bengali Society</h3>
+        <p>A beautiful hangout for the Bangladeshi and Bengali community, with dances, fireworks, fun tools and tip leaderboards.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>4.2K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>10 favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game spot reveal" href="https://www.roblox.com/games/86913577508706/Mystic-Hangout" target="_blank" rel="noopener">
+      <div class="game-thumb">
+        <img src="assets/games/Mystic_Hangout_thumb.jpg" alt="Mystic Hangout on Roblox" loading="lazy">
+        <img class="game-icon" src="assets/games/Mystic_Hangout_icon.jpg" alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">08</span>
+        </div>
+        <h3>Mystic Hangout</h3>
+        <p>A peaceful, beautifully crafted world for unwinding, connecting with friends and exploring.</p>
+        <div class="game-meta">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>57K+ visits</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>430+ favorites</span>
+          <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <p class="games-note reveal">Visit counts as of October 2026.</p>
+</section>
+
+<section id="services" class="grid-bg">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">04 · Services</span>
+      <h2>Systems &amp; perm dev.</h2>
+    </div>
+    <p>Ready made systems you can drop into your game, or me on your team as a permanent developer.</p>
+  </div>
+
+  <div class="offer-grid">
+    <div class="offer spot reveal">
+      <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z M3 7l9 5 9-5 M12 12v10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+      <div>
+        <h3>Ready made systems</h3>
+        <p>Polished, tested systems with clean UI. Pay with Robux, bKash or Nagad and get it by email.</p>
+      </div>
+    </div>
+    <div class="offer spot reveal">
+      <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.6 2.5 3 5.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <div>
+        <h3>Perm dev</h3>
+        <p>Join your game as a permanent developer: scripting, systems, UI and ongoing updates, like I've done for Bangali Hood, Bangla Town, Lumina Hangout, Bengali Society and Mystic Hangout.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="group-title reveal"><span class="group-dot own"></span>Available systems &amp; tools <span class="group-count">9</span></h3>
+  <div class="sys-grid">
+    <article class="sys sys-bundle spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox package &middot; 4 systems</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Game Essentials<br>Pack</h3>
+      </div>
+      <div class="sys-body">
+        <p>Four drop in systems every hangout and social game needs, in one pack. Each one is mobile friendly, installs by drag and drop, and comes with TopbarPlus.</p>
+        <div class="bundle-grid">
+          <div class="bundle-item">
+            <h4><span class="bundle-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z" fill="currentColor"/></svg></span>Emotes &amp; Dances</h4>
+            <ul><li>230+ trending dances and emotes in a searchable menu with Dances, Emotes and Favorites tabs</li><li>Favorites save per player, with live speed control from 0.5x to 2x</li><li>11 camera modes for content, from Orbit and Festival to CCTV and Random</li><li>Exploit safe and self checking: emotes that can't play are hidden automatically</li></ul>
+          </div>
+          <div class="bundle-item">
+            <h4><span class="bundle-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4L5.3 5.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>Settings Menu</h4>
+            <ul><li>Graphics presets (Low, Medium, Auto, High) plus Super Lag Free Mode</li><li>Music on or off with a volume slider, and a Player Music mute for other players' boomboxes</li><li>Info tab with your About text and community rules</li><li>Personal only, and adds Head Tags, Weather and Profile tabs when your game has them</li></ul>
+          </div>
+          <div class="bundle-item">
+            <h4><span class="bundle-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg></span>Game Pass Shop</h4>
+            <ul><li>Tools, Head Tags, Limited and Premium tabs</li><li>Discount badges with crossed out prices, Owned states and Coming soon cards</li><li>Real delivery on join, on every respawn and right after purchase, no rejoin</li><li>Server checked ownership, and you add items with just a Game Pass ID and Tool name</li></ul>
+          </div>
+          <div class="bundle-item">
+            <h4><span class="bundle-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.3" stroke="currentColor" stroke-width="2"/></svg></span>Player Teleport</h4>
+            <ul><li>Teleport to friends with requests they accept or decline, expiring after 30 seconds</li><li>Search panel with avatar previews and an online count</li><li>Allow Requests toggle, spam proof with server checks and a cooldown</li><li>Block teleports during rounds with a single NoTeleport attribute</li></ul>
+          </div>
+        </div>
+        <div class="bundle-foot">
+          <div class="sys-price" data-system="Game Essentials Pack"></div>
+          <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Hangout</span><span class="chip">Social</span><span class="chip">Roleplay</span><span class="chip">Any game</span></div></div>
+          <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Game Essentials Pack"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+        </div>
+      </div>
+    </article>
+    <article class="sys sys-flyrace spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox minigame</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Fly Race<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>A multiplayer flying race minigame you can drop into any game. Players line up, get a flying tool and race through rings in the sky. The fastest flyers win.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Auto queue:</b> step on the green pad, and a countdown starts once 2 or more players are waiting</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Flying tool:</b> double click on PC or double tap on phone to fly, and it's taken away after the race</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>20 sky rings:</b> fly through them in order before the 50 second timer runs out</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rings only in races:</b> racers see them with a marker on the next ring, and they're hidden otherwise</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Top 3 winners:</b> first, second and third place are announced when the race ends</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Saved wins:</b> wins are saved, and the top players show on a global in game leaderboard</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Win reward:</b> the winner gets 100 of your leaderstats currency (optional, amount and name changeable)</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Anti cheat:</b> a speed check catches players moving faster than flying allows</span></li>
+        </ul>
+        <div class="sys-price" data-system="Fly Race System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Hangout</span><span class="chip">Minigames</span><span class="chip">Obby</span><span class="chip">Events</span></div></div>
+        <p class="sys-note">Polished UI with a queue counter, countdowns, a race timer, live progress and ring sounds. Phone friendly: works with the joystick, and players look up or down to climb or dive. One config file sets players needed, countdown, race time, rings, winners and the tool name.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Fly Race System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-rowboat spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Rowboat<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>Calm, good looking rowboats for lakes and rivers. Hop in, row and drift. Perfect for hangouts, parks and roleplay maps.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Floats properly:</b> rides Terrain water at the right height, so the hull never looks swamped</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Feels like a boat:</b> gentle bobbing and rocking, leaning into turns, and the bow lifts with speed</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rowing pace:</b> calm, not speedboat fast, with a beaching guard that keeps boats off the shore</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Rowing animation:</b> the driver's stroke speeds up with the boat</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Real oars:</b> a mirrored pair that pivots at the oarlocks and dips into the water on each stroke</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Water sounds:</b> lapping and bow wash that fade in with speed</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Two seats:</b> one for the driver and one for a passenger</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Every control:</b> WASD or arrow keys, gamepad, and built in on screen controls for mobile</span></li>
+        </ul>
+        <div class="sys-price" data-system="Rowboat System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Hangout</span><span class="chip">Parks</span><span class="chip">Roleplay</span><span class="chip">Open world</span></div></div>
+        <p class="sys-note">Built right: stable floating with no jitter, and boats sleep while empty, so lots of them cost almost nothing. Any boat model sets itself up automatically. 4 boats included, plus one config file with every number explained.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Rowboat System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-kite spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Kite Fighting<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>Fly kites high over your map, tangle your string with a rival's, bet on it and race to cut their line. Inspired by <b>Shakrain</b>, the kite festival of Old Dhaka, and built for hangout and festival games.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Floaty kite physics:</b> lag, drift and sway, so it flies like a kite, not a drone</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Big sky:</b> climb up to 110 studs with up to 95 studs of line, plus a kite tail</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Readable crowds:</b> every flyer gets their own color, with a live flight readout</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>PC and mobile:</b> on screen steering pad and line buttons, clear of jump and the thumbstick</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Real tangles:</b> strings tangle only when they actually cross in 3D, not on touch events</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Bet duels:</b> both players name a bet, raise or MATCH, then a 3 second countdown and a 5 second TAP! race</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Winner takes the pot:</b> the loser's kite is cut with a 15 second cooldown, and a tie refunds both</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Server safe:</b> bets held by the server, balances rechecked, an anti autoclicker cap, and leaving forfeits</span></li>
+        </ul>
+        <div class="sys-price" data-system="Kite Fighting System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Hangout</span><span class="chip">Festival</span><span class="chip">Social</span><span class="chip">Minigames</span></div></div>
+        <p class="sys-note">Setup: 3 scripts and a Tool, with every value tunable in one config. Bets and winnings use your game's existing leaderstats currency.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Kite Fighting System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-donation spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Donation<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>A complete <b>Pls Donate</b> style system with real Robux transfers, not gamepass tricks. Players send Robux straight to each other, Roblox shows the payment dialog, and your game never touches the money.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Real Robux transfers:</b> built on Roblox's official Robux Transfers API, and Roblox handles the payment</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Donation bowl:</b> every player (or only your group) gets one, with quick picks or any custom amount</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>No surprises:</b> the panel shows Roblox's 10% fee and the limits up front</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>5 effect tiers:</b> Donation, Generous, Divine, Mythic and Legendary, plus an effect on the receiver</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Server wide hype:</b> gold chat announcement, on screen banner and a chime</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Leaderboards:</b> global Top Donors and Top Raised, 50 entries each, auto refreshing</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Podium statues:</b> wearing the #1 donor's and #1 raiser's real avatars, plus a TOP DONOR tag</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Drops right in:</b> DataStore saves, joins your leaderstats, and a /simdonate test command</span></li>
+        </ul>
+        <div class="sys-price" data-system="Donation System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Donation games</span><span class="chip">Hangout</span><span class="chip">Social</span><span class="chip">Showcase</span></div></div>
+        <p class="sys-note">Good to know: Roblox's rules apply to transfers. The sender needs Roblox Plus and an age check, Roblox keeps 10%, and there are daily and monthly limits. You re-upload 4 small assets (2 animations, 2 sounds) under your account, and the porting guide shows where each goes.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Donation System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-halloween spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox tools</span>
+        <span class="sys-badge"><span class="status-dot"></span>New</span>
+        <h3 class="sys-title">Halloween<br>Tools Pack</h3>
+      </div>
+      <div class="sys-body">
+        <p>Two premium Halloween tools, the <b>Phantom Bow</b> and the <b>Cursed Spinning Stick</b>, with custom meshes, hand made animations and polished effects. Drop them into your game and they just work.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Phantom Bow:</b> hold to draw, release to fire, and the arrow lands exactly where you click</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Spectral arrows:</b> glowing orange trails and wisps, with lava sparks on impact</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Server checked shots:</b> cooldowns, origin checks and swept raycasts make it hard to exploit</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Cursed Spinning Stick:</b> 3 random performance routines with void purple trails</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Helicopter finale:</b> the stick spins overhead and lifts the player into the air</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Synced for everyone:</b> the whole server sees the same performance</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>R15 and R6:</b> mouse aiming on PC, tap and hold on mobile</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Fully tunable:</b> two Config scripts for speed, cooldown, colors, lift height and more</span></li>
+        </ul>
+        <div class="sys-price" data-system="Halloween Tools Pack"></div>
+        <div class="sys-perfect"><span class="sys-label">What you get</span><div class="skill-cloud"><span class="chip">2 tools with final meshes</span><span class="chip">All server and client scripts</span><span class="chip">12 editable animations</span><span class="chip">One command installer</span><span class="chip">README</span></div></div>
+        <p class="sys-note">Setup takes about 2 minutes: run the installer, then publish the included animations under your own account. Roblox only plays animations you own, so the README walks you through it.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Halloween Tools Pack"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-partner spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>Available now</span>
+        <h3 class="sys-title">Partner<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>Bring anyone into your game as your partner. Type any Roblox username and a partner shows up wearing that player's <b>real avatar</b>, even if they're offline.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Call anyone:</b> type any Roblox username to get a partner with their exact avatar, clothes and accessories, even if they're offline</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Spawn and Recall:</b> the partner appears beside you with a sparkle effect, and Recall brings them back anytime</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Follow:</b> your partner walks with you and matches your speed, on or off whenever you like</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>4 carry styles:</b> Piggyback, Bridal Carry, Hug and Carry, picked from the menu</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Bye Bye:</b> send your partner away with one tap</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Clean dark UI:</b> a smooth panel with pop up messages, opened from a Call Partner topbar button</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Works in any game:</b> carry poses are built in, so there's nothing to upload, and every player sees them</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Safe:</b> usernames are checked on the server, lookups have a cooldown, and everything is cleaned up when a player leaves</span></li>
+        </ul>
+        <div class="sys-price" data-system="Partner System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Couple / dating</span><span class="chip">Roleplay</span><span class="chip">Social</span><span class="chip">Hangout</span></div></div>
+        <p class="sys-note">Easy install with labelled folders (ReplicatedStorage, ServerScriptService, StarterPlayerScripts). TopbarPlus is included, with a backup button if your game doesn't have it. Phone friendly, and carry styles, positions, follow distance, walk speed and the button are all in one config file. Carry needs R15 avatars.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Partner System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-profile spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>Available now</span>
+        <h3 class="sys-title">Profile<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>Give every player their own profile. Click or tap any player to see who they are, leave a comment, and show some love.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Click to view:</b> tap any player (or yourself) to see their avatar, display name and @username</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Bio:</b> write your own bio (150 characters), filtered and saved</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Likes and dislikes:</b> vote on other players' profiles, with live counts</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Comments:</b> a chat message, a sound and a beam linking the two players for every comment</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Pin and hide:</b> pin up to 3 favorite comments to the top, and hide ones you don't like</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Add friend and View avatar:</b> send a friend request or see a player's full outfit right from the profile</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Hide player:</b> hide annoying players (their avatar, chat and voice) just for you</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Saved forever:</b> profiles, comments and likes are saved with DataStores</span></li>
+        </ul>
+        <div class="sys-price" data-system="Profile System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Roleplay</span><span class="chip">Social</span><span class="chip">Hangout</span><span class="chip">Custom experiences</span></div></div>
+        <p class="sys-note">Safe: all text is filtered, with spam cooldowns and server side checks. Phone friendly, with a clean smaller panel on mobile. Easy install using labelled UNGROUP folders, and it works with the Settings Menu's hide profiles option.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Profile System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-concert spot reveal">
+      <div class="sys-head">
+        <span class="sys-kicker"><span class="sys-logo" aria-hidden="true"></span>Roblox system</span>
+        <span class="sys-badge"><span class="status-dot"></span>Available now</span>
+        <h3 class="sys-title">Concert Stage<br>System</h3>
+      </div>
+      <div class="sys-body">
+        <p>Host real live concerts in your game. A huge stage with moving lights, giant screens and a full <b>DJ control panel</b>.</p>
+        <ul class="sys-feats">
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Full concert stage:</b> a big built stage with towers, LED screens, a logo and an audience area, ready to use</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>DJ control panel:</b> run the whole show from one panel: lighting, screens, music and camera</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Light show:</b> moving heads, strobes, lasers and lighting presets that react to the music beat</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>LED screens:</b> animated screen art and a live feed of the performer on stage</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Music and PA:</b> play music through the stage speakers with volume control</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Concert cameras:</b> cinematic camera shots for the audience</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Viewer mode:</b> the crowd gets its own smooth view of the show</span></li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Who can control it:</b> the game owner (user and group games), a list of UserIds, or a group rank</span></li>
+        </ul>
+        <div class="sys-price" data-system="Concert Stage System"></div>
+        <div class="sys-perfect"><span class="sys-label">Perfect for</span><div class="skill-cloud"><span class="chip">Hangout</span><span class="chip">Events</span><span class="chip">Music</span><span class="chip">Showcase</span></div></div>
+        <p class="sys-note">Customizable: change the logo text, colors, screens, lighting and stage position in one config file. Phone friendly, with an easy install using labelled UNGROUP folders.</p>
+        <a href="#orderForm" class="btn btn-solid sys-cta" data-order="Concert Stage System"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>Order now</a>
+      </div>
+    </article>
+    <article class="sys sys-soon reveal">
+      <div class="soon-inner">
+        <span class="soon-plus" aria-hidden="true">+</span>
+        <h3>More systems coming soon</h3>
+        <p>New systems are on the way. Want something specific? Ask about a custom build.</p>
+        <a href="#messageForm" class="btn btn-outline" data-topic="Custom system" data-message="Hi, I want a custom system: ">Request a system</a>
+      </div>
+    </article>
+  </div>
+  <div class="message-card order-card reveal" id="order">
+    <div class="message-head">
+      <h3>Order a system</h3>
+      <p>Pay first, then place your order. The system is sent to your email.</p>
+      <ol class="order-steps">
+        <li><b>Pay for your item</b> Pick an item and payment method. The price and how to pay appear in the form.</li>
+        <li><b>Place your order</b> Add your email and your payment details so I can confirm it.</li>
+        <li><b>Get it by email</b> Once your payment is confirmed, I email the system to you.</li>
+      </ol>
+    </div>
+    <form class="message-form" id="orderForm" name="order" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
+      <input type="hidden" name="form-name" value="order">
+      <input type="hidden" name="order_id" value="">
+      <input type="hidden" name="price" value="">
+      <p class="hp-field" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+      <label class="field">
+        <span>Item</span>
+        <select name="system" required>
+          <option>Fly Race System</option>
+          <option>Game Essentials Pack</option>
+          <option>Rowboat System</option>
+          <option>Kite Fighting System</option>
+          <option>Donation System</option>
+          <option>Halloween Tools Pack</option>
+          <option>Partner System</option>
+          <option>Profile System</option>
+          <option>Concert Stage System</option>
+        </select>
+      </label>
+      <fieldset class="field pay-field">
+        <span>Payment method</span>
+        <div class="pay-options">
+          <label class="pay-option"><input type="radio" name="payment" value="Robux" required checked><span>Robux</span></label>
+          <label class="pay-option"><input type="radio" name="payment" value="bKash"><span>bKash</span></label>
+          <label class="pay-option"><input type="radio" name="payment" value="Nagad"><span>Nagad</span></label>
+        </div>
+      </fieldset>
+      <div class="pay-box" id="payBox" aria-live="polite"></div>
+      <div class="field-row">
+        <label class="field">
+          <span>Your email</span>
+          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="The system is sent here" required>
+        </label>
+        <label class="field">
+          <span>Roblox username</span>
+          <input type="text" name="roblox_username" maxlength="40" placeholder="Your Roblox username" required>
+        </label>
+      </div>
+      <label class="field" id="txnField">
+        <span>Transaction ID</span>
+        <input type="text" name="transaction_id" maxlength="40" placeholder="From your bKash or Nagad receipt">
+      </label>
+      <label class="field">
+        <span>Notes (optional)</span>
+        <textarea name="notes" rows="3" maxlength="2000" placeholder="Anything I should know?"></textarea>
+      </label>
+      <div class="form-foot">
+        <button class="btn btn-solid" type="submit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg><span>Place order</span></button>
+        <span class="form-status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section id="achievements">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">05 · Journey</span>
+      <h2>How it's going.</h2>
+    </div>
+    <p>A short timeline, growing as things happen.</p>
+  </div>
+  <div class="timeline">
+    <div class="t-item reveal">
+      <div class="t-num">1</div>
+      <span class="t-when">Foundation</span>
+      <h3>Started building in Roblox Studio</h3>
+      <p>Learned to script and design mechanics from the ground up, the starting point for everything after.</p>
+    </div>
+    <div class="t-item reveal">
+      <div class="t-num">2</div>
+      <span class="t-when">Team work</span>
+      <h3>Developer on Bangali Hood, Bangla Town, Lumina Hangout and more</h3>
+      <p>Joined other teams' games as a developer, building for live player bases.</p>
+    </div>
+    <div class="t-item reveal">
+      <div class="t-num">3</div>
+      <span class="t-when">My own games</span>
+      <h3>Launched Bangali Era, Ondhokar &amp; CTG CITY</h3>
+      <p>Started building my own Roblox games from the ground up.</p>
+    </div>
+    <div class="t-item current reveal">
+      <div class="t-num">4</div>
+      <span class="t-when">Now</span>
+      <h3>Building, and open to work</h3>
+      <p>Selling ready made systems, working as a perm dev, and building my own games.</p>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="contact-card reveal">
+    <div>
+      <span class="eyebrow">06 · Contact</span>
+      <h2>Let's build something.</h2>
+      <p>Want one of my systems, a custom build, or a perm dev for your game? Send a message below, DM me on Discord, or email me.</p>
+    </div>
+    <div class="contact-methods">
+      <div class="method spot">
+        <span class="ico" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="method-body">
+          <span class="method-label">Email</span>
+          <a class="method-value" href="mailto:pleasejoinmyteam@gmail.com">pleasejoinmyteam@<wbr>gmail.com</a>
+        </div>
+        <button class="copy-btn" type="button" data-copy="pleasejoinmyteam@gmail.com" data-what="Email" aria-label="Copy email address">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <div class="method discord spot">
+        <span class="ico" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.6 5.3A17 17 0 0 0 15.4 4l-.5 1.1a15.7 15.7 0 0 0-5.8 0L8.6 4a17 17 0 0 0-4.2 1.3C1.7 9.3 1 13.2 1.3 17a17.2 17.2 0 0 0 5.2 2.6l1.1-1.8c-.6-.2-1.2-.5-1.8-.9l.4-.3a12.2 12.2 0 0 0 10.4 0l.4.3c-.6.4-1.2.7-1.8.9l1.1 1.8a17.1 17.1 0 0 0 5.2-2.6c.4-4.4-.7-8.3-3-11.7zM8.5 14.7c-1 0-1.9-.9-1.9-2.1s.8-2.1 1.9-2.1 1.9.9 1.9 2.1-.8 2.1-1.9 2.1zm7 0c-1 0-1.9-.9-1.9-2.1s.8-2.1 1.9-2.1 1.9.9 1.9 2.1-.8 2.1-1.9 2.1z"/></svg>
+        </span>
+        <div class="method-body">
+          <span class="method-label">Discord</span>
+          <span class="method-value">6m3n</span>
+        </div>
+        <button class="copy-btn" type="button" data-copy="6m3n" data-what="Discord username" aria-label="Copy Discord username">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <span class="contact-note">On Discord, add <b style="color:var(--grey-light)">6m3n</b> as a friend and send a message.</span>
+    </div>
+  </div>
+  <div class="message-card reveal" id="message">
+    <div class="message-head">
+      <h3>Send me a message</h3>
+      <p>Write it here and it comes straight to me. Leave your Discord or email so I can reply.</p>
+    </div>
+    <form class="message-form" id="messageForm" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
+      <input type="hidden" name="form-name" value="contact">
+      <p class="hp-field" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+      <div class="field-row">
+        <label class="field">
+          <span>Your name</span>
+          <input type="text" name="name" maxlength="80" autocomplete="name" placeholder="Roblox or real name" required>
+        </label>
+        <label class="field">
+          <span>Discord or email</span>
+          <input type="text" name="reply_to" maxlength="120" placeholder="So I can reply to you" required>
+        </label>
+      </div>
+      <label class="field">
+        <span>What's it about?</span>
+        <select name="topic">
+          <option>Buying a system</option>
+          <option>Perm dev</option>
+          <option>Custom system</option>
+          <option>Something else</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Message</span>
+        <textarea name="message" rows="5" maxlength="2000" placeholder="Tell me what you need" required></textarea>
+      </label>
+      <div class="form-foot">
+        <button class="btn btn-solid" type="submit" id="messageSend">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4 18-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Send message</span>
+        </button>
+        <span class="form-status" id="messageStatus" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer>
+  <span>© <span id="year">2026</span> 3Iaw · Built around a Roblox baseplate.</span>
+  <a href="#top" class="to-top">Back to top
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script id="shopData" type="application/json">
+{
+  "bkash": "01978664169",
+  "nagad": "01978664169",
+  "systems": {
+    "Fly Race System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2060123281/4286" },
+    "Game Essentials Pack": { "robux": 5715, "bdt": 4000, "usd": 33, "gamepass": "https://www.roblox.com/game-pass/2060261327/5715" },
+    "Rowboat System":       { "robux": 1143, "bdt": 800, "usd": 7, "gamepass": "https://www.roblox.com/game-pass/2057567344/1143" },
+    "Kite Fighting System": { "robux": 1429, "bdt": 1000, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057423342/1429" },
+    "Donation System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2058023335/4286" },
+    "Halloween Tools Pack": { "robux": 1400, "bdt": 980, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057447363/1400" },
+    "Partner System":       { "robux": 1715, "bdt": 1200, "usd": 10, "gamepass": "https://www.roblox.com/game-pass/2060656564/1715" },
+    "Profile System":       { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2057621402/4286" },
+    "Concert Stage System": { "robux": 8572, "bdt": 6000, "usd": 50, "gamepass": "https://www.roblox.com/game-pass/2058263389/8572" }
+  }
+}
+</script>
+<script>
+document.body.classList.remove('no-js');
+
+// ---------- animated Roblox avatar background ----------
+// The avatar render is split into layers (body, left arm, right arm) so each
+// can move on its own. The avatar stands in place and cycles through aura stances.
+(function(){
+  const home = document.getElementById('avatarHome');
+  const move = document.getElementById('avatarMove');
+  const torso = document.getElementById('avatarTorso');
+  const armL = document.getElementById('avatarArmL');
+  const armR = document.getElementById('avatarArmR');
+  const bodyImg = document.getElementById('avatarBody');
+  if (!home) return;
+  // the render is embedded once (on the body layer) and shared with the arm layers
+  document.querySelectorAll('.avatar-layer:not([src])').forEach(function(i){ i.src = bodyImg.src; });
+
+  // the poses are calm, so they also run for visitors who prefer reduced motion
+
+  // ---- layout ----
+  let box = home.getBoundingClientRect();
+  window.addEventListener('resize', function(){ box = home.getBoundingClientRect(); });
+
+  // ---- pose: what we draw every frame (eased toward target) ----
+  const pose   = {rot:0, sx:1, sy:1, al:0, ar:0}; // al/ar: arm angles (deg, + swings the arm outward)
+  const target = Object.assign({}, pose);
+
+  // ---- aura stances ----
+  // the avatar never leaves its spot: each stance eases in, holds with slow breathing, then eases out
+  const lerp = function(a, b, k){ return a + (b - a) * k; };
+  const ease = function(p){ return p < .5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2) / 2; };
+
+  function breathe(t){
+    target.rot = 0;
+    target.sx = 1 - Math.sin(t*1.6)*0.005; target.sy = 1 + Math.sin(t*1.6)*0.012;
+    target.al = 3 + Math.sin(t*1.1)*1.5; target.ar = 3 + Math.sin(t*1.1 + 1)*1.5;
+  }
+  function stance(dur, hold){                        // hold(t, k): k blends 0..1 into the stance
+    return { dur:dur, update:function(p, t){
+      const k = ease(Math.min(p / 0.2, 1)) * (p > 0.85 ? ease(1 - (p - 0.85) / 0.15) : 1);
+      breathe(t);
+      hold(t, k);
+    }};
+  }
+
+  const anims = {
+    rest: { dur:[2.5, 4], update:function(p, t){ breathe(t); } },
+    power: stance([5, 7], function(t, k){            // arms slightly out, chest up
+      target.al = lerp(target.al, 24, k); target.ar = lerp(target.ar, 24, k);
+      target.sy += 0.02 * k; target.sx += 0.015 * k;
+    }),
+    sky: stance([4.5, 6], function(t, k){            // one arm straight up
+      target.ar = lerp(target.ar, 172, k);
+      target.al = lerp(target.al, 6, k);
+    }),
+    lean: stance([5, 7], function(t, k){             // relaxed lean back
+      target.rot = -4 * k;
+      target.al = lerp(target.al, 14, k); target.ar = lerp(target.ar, 14, k);
+      target.sy += 0.01 * k;
+    }),
+    wind: stance([5, 7], function(t, k){             // arms swept back, only the arms stir
+      target.al = lerp(target.al, 38 + Math.sin(t * 2.1) * 3, k);
+      target.ar = lerp(target.ar, 38 + Math.sin(t * 2.1 + 0.6) * 3, k);
+    }),
+    present: stance([4.5, 6], function(t, k){        // one arm held out to the side
+      target.al = lerp(target.al, 90, k);
+    }),
+    victory: stance([4, 5.5], function(t, k){        // both arms raised
+      target.al = lerp(target.al, 150, k); target.ar = lerp(target.ar, 150, k);
+      target.sy += 0.015 * k;
+    })
+  };
+
+  // ---- scheduler: rest, stance, rest, stance... ----
+  const stances = ['power','sky','lean','wind','present','victory'];
+  let current = null, curName = '', curT = 0, curDur = 0, last = '';
+  function play(name){
+    current = anims[name]; curName = name; curT = 0;
+    curDur = current.dur[0] + Math.random() * (current.dur[1] - current.dur[0]);
+  }
+  function pick(){
+    let n;
+    do { n = stances[Math.floor(Math.random() * stances.length)]; } while (n === last || n === curName);
+    last = n; return n;
+  }
+  function next(){ play(curName === 'rest' ? pick() : 'rest'); }
+  play('rest');
+
+  // click the avatar (anywhere not on a link/button) to switch to another stance
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,.chip')) return;
+    const r = home.getBoundingClientRect();
+    if (e.clientX > r.left + r.width*0.1 && e.clientX < r.right - r.width*0.1 && e.clientY > r.top + r.height*0.2 && e.clientY < r.bottom) {
+      play(pick());
+    }
+  });
+
+  // ---- frame loop ----
+  let lastTs = null, clock = 0;
+  function frame(now){
+    if (lastTs === null) lastTs = now;
+    const dt = Math.min((now - lastTs) / 1000, 0.05);
+    lastTs = now; clock += dt; curT += dt;
+
+    current.update(Math.min(curT / curDur, 1), clock);
+    if (curT >= curDur) next();
+
+    const k = 1 - Math.exp(-dt * 8), kArm = 1 - Math.exp(-dt * 7);
+    pose.rot = lerp(pose.rot, target.rot, k);
+    pose.sx = lerp(pose.sx, target.sx, k);
+    pose.sy = lerp(pose.sy, target.sy, k);
+    pose.al = lerp(pose.al, target.al, kArm);
+    pose.ar = lerp(pose.ar, target.ar, kArm);
+
+    move.style.transform = 'rotate(' + pose.rot.toFixed(2) + 'deg)';
+    torso.style.transform = 'scale(' + pose.sx.toFixed(3) + ',' + pose.sy.toFixed(3) + ')';
+    armL.style.transform = 'rotate(' + pose.al.toFixed(2) + 'deg)';
+    armR.style.transform = 'rotate(' + (-pose.ar).toFixed(2) + 'deg)';
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+// ---------- view counter (abacus.jasoncameron.dev) ----------
+// each visitor is counted once per browser session; the count started at 511
+(function(){
+  const el = document.getElementById('views');
+  const out = document.getElementById('viewsCount');
+  if (!el) return;
+  const local = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  let seen = local;                                  // previews on this computer never add views
+  try { seen = seen || sessionStorage.getItem('3iaw-viewed') === '1'; } catch (e) {}
+  function show(n){ out.textContent = n.toLocaleString('en-US'); el.hidden = false; }
+  // show the last count this browser saw right away, in case the counter service is slow or down
+  try { const last = Number(localStorage.getItem('3iaw-views')); if (last > 0) show(last); } catch (e) {}
+  fetch('https://abacus.jasoncameron.dev/' + (seen ? 'get' : 'hit') + '/3iaw-com/views')
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(d){
+      if (typeof d.value !== 'number') return;
+      show(d.value);
+      try { localStorage.setItem('3iaw-views', String(d.value)); } catch (e) {}
+      if (!seen) { try { sessionStorage.setItem('3iaw-viewed', '1'); } catch (e) {} }
+    })
+    .catch(function(){});                            // counter down: keep the last known number (or stay hidden)
+})();
+
+// ---------- background music ----------
+(function(){
+  const audio = document.getElementById('bgAudio');
+  const btn = document.getElementById('muteToggle');
+  const label = document.getElementById('muteLabel');
+  if (!audio || !btn) return;
+
+  audio.volume = 0.03;   // kept very quiet on purpose
+  audio.loop = true;
+
+  function setMutedUI(isMuted){
+    btn.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
+    btn.setAttribute('aria-label', isMuted ? 'Unmute background music' : 'Mute background music');
+    label.textContent = isMuted ? 'Sound off' : 'Sound on';
+  }
+
+  function tryPlay(){
+    const p = audio.play();
+    if (p && p.catch) {
+      p.catch(function(){
+        // autoplay with sound was blocked; start on the first interaction instead
+        const resume = function(e){
+          if (e && btn.contains(e.target)) return; // the button handles itself
+          audio.play().catch(function(){});
+          window.removeEventListener('pointerdown', resume);
+          window.removeEventListener('keydown', resume);
+        };
+        window.addEventListener('pointerdown', resume);
+        window.addEventListener('keydown', resume);
+      });
+    }
+  }
+
+  setMutedUI(audio.muted);
+  tryPlay();
+
+  btn.addEventListener('click', function(){
+    audio.muted = !audio.muted;
+    if (!audio.muted) { tryPlay(); }
+    setMutedUI(audio.muted);
+  });
+})();
+
+// ---------- header, progress bar, active nav ----------
+(function(){
+  const header = document.getElementById('siteHeader');
+  const bar = document.getElementById('progress');
+  const toggle = document.getElementById('navToggle');
+  const links = Array.from(document.querySelectorAll('nav a[href^="#"]'));
+
+  function onScroll(){
+    const y = window.scrollY;
+    header.classList.toggle('scrolled', y > 20);
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.transform = 'scaleX(' + (max > 0 ? y / max : 0) + ')';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  function setMenu(open){
+    document.body.classList.toggle('nav-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  }
+  toggle.addEventListener('click', function(){ setMenu(!document.body.classList.contains('nav-open')); });
+  links.forEach(function(a){ a.addEventListener('click', function(){ setMenu(false); }); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') setMenu(false); });
+
+  const sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  const spy = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (!entry.isIntersecting) return;
+      links.forEach(function(a){ a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id); });
+    });
+  }, {rootMargin:'-45% 0px -50% 0px'});
+  sections.forEach(function(s){ spy.observe(s); });
+})();
+
+// ---------- reveal on scroll ----------
+(function(){
+  const items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window)) { items.forEach(function(el){ el.classList.add('in'); }); return; }
+  const io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const siblings = Array.from(el.parentElement.children).filter(function(c){ return c.classList.contains('reveal'); });
+      el.style.transitionDelay = (Math.max(0, siblings.indexOf(el)) * 70) + 'ms';
+      el.classList.add('in');
+      io.unobserve(el);
+    });
+  }, {threshold:0.12, rootMargin:'0px 0px -40px 0px'});
+  items.forEach(function(el){ io.observe(el); });
+})();
+
+// ---------- spotlight hover on cards ----------
+document.querySelectorAll('.spot').forEach(function(card){
+  card.addEventListener('pointermove', function(e){
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+// ---------- typed role under the name ----------
+(function(){
+  const el = document.getElementById('typed');
+  if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const words = ['Luau scripter', 'Roblox developer', 'systems builder', 'tool maker'];
+  let w = 0, i = words[0].length, deleting = true;
+  function step(){
+    const word = words[w];
+    i += deleting ? -1 : 1;
+    el.textContent = word.slice(0, i);
+    let delay = deleting ? 45 : 85;
+    if (!deleting && i === word.length) { deleting = true; delay = 1800; }
+    else if (deleting && i === 0) { deleting = false; w = (w + 1) % words.length; delay = 300; }
+    setTimeout(step, delay);
+  }
+  setTimeout(step, 2200);
+})();
+
+// ---------- copy contact details ----------
+(function(){
+  const toast = document.getElementById('toast');
+  let hideTimer;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2000);
+  }
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+  function wireCopy(btn){
+    btn.addEventListener('click', function(){
+      const text = btn.dataset.copy;
+      const done = function(){
+        const t = btn.querySelector('.copy-text');
+        btn.classList.add('done'); if (t) t.textContent = 'Copied';
+        showToast(btn.dataset.what + ' copied: ' + text);
+        setTimeout(function(){ btn.classList.remove('done'); if (t) t.textContent = 'Copy'; }, 1800);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+      } else { fallbackCopy(text); done(); }
+    });
+  }
+  window.wireCopy = wireCopy;
+  document.querySelectorAll('.copy-btn').forEach(wireCopy);
+})();
+
+// ---------- message + order forms (Netlify Forms) ----------
+(function(){
+  function wire(form, successText){
+    const status = form.querySelector('.form-status');
+    const send = form.querySelector('button[type="submit"]');
+    function setStatus(text, kind){ status.textContent = text; status.className = 'form-status' + (kind ? ' ' + kind : ''); }
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (form.elements['order_id']) form.elements['order_id'].value = '3I-' + Date.now().toString(36).toUpperCase().slice(-6);
+      send.disabled = true;
+      setStatus('Sending...');
+      fetch('/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams(new FormData(form)).toString()
+      }).then(function(res){
+        if (!res.ok) throw new Error(res.status);
+        const done = successText(form);
+        form.reset();
+        setStatus(done, 'ok');
+      }).catch(function(){
+        setStatus('Could not send right now. Please email or DM me on Discord instead.', 'err');
+      }).finally(function(){ send.disabled = false; });
+    });
+  }
+
+  const messageForm = document.getElementById('messageForm');
+  const orderForm = document.getElementById('orderForm');
+  if (messageForm) wire(messageForm, function(){ return 'Sent! I will get back to you soon.'; });
+  if (orderForm) wire(orderForm, function(f){
+    return 'Order ' + f.elements['order_id'].value + ' received! Once I confirm your payment, I will email the system to ' + f.elements['email'].value + '.';
+  });
+
+  // ---- shop: prices, payment instructions and "Order now" buttons ----
+  const shop = JSON.parse(document.getElementById('shopData').textContent);
+  const fmt = function(n){ return Number(n).toLocaleString('en-US'); };
+
+  document.querySelectorAll('.sys-price[data-system]').forEach(function(el){
+    const p = shop.systems[el.dataset.system];
+    el.innerHTML = '<b>' + fmt(p.robux) + ' Robux' + (p.gamepass ? '' : ' <span class="soon">soon</span>') + '</b><span>or ৳' + fmt(p.bdt) + ' with bKash / Nagad</span><span class="usd">about $' + fmt(p.usd) + ' USD</span><small>Robux price includes the 30% Roblox fee</small>';
+  });
+
+  if (orderForm) {
+    const payBox = document.getElementById('payBox');
+    const txnField = document.getElementById('txnField');
+    const txnInput = orderForm.elements['transaction_id'];
+    const copyIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+    function updatePay(){
+      const name = orderForm.elements['system'].value;
+      let method = orderForm.elements['payment'].value;
+      const p = shop.systems[name];
+      // items without a gamepass yet: Robux is greyed out and bKash is picked instead
+      const robuxRadio = orderForm.querySelector('input[name="payment"][value="Robux"]');
+      robuxRadio.disabled = !p.gamepass;
+      robuxRadio.nextElementSibling.textContent = p.gamepass ? 'Robux' : 'Robux (soon)';
+      if (!p.gamepass && method === 'Robux') {
+        orderForm.querySelector('input[name="payment"][value="bKash"]').checked = true;
+        method = 'bKash';
+      }
+      if (method === 'Robux') {
+        orderForm.elements['price'].value = fmt(p.robux) + ' Robux';
+        payBox.innerHTML =
+          '<span class="pay-amount">' + fmt(p.robux) + ' Robux <span class="pay-usd">about $' + fmt(p.usd) + ' USD</span></span>' +
+          '<p>Buy the <b>' + name + '</b> gamepass on Roblox, then place your order below with the Roblox username you bought it with. The Robux price includes the 30% Roblox fee.</p>' +
+          '<a class="btn btn-outline pay-link" href="' + p.gamepass + '" target="_blank" rel="noopener">Buy the gamepass</a>';
+        txnField.hidden = true; txnInput.required = false;
+      } else {
+        const number = method === 'bKash' ? shop.bkash : shop.nagad;
+        orderForm.elements['price'].value = '৳' + fmt(p.bdt) + ' (' + method + ')';
+        payBox.innerHTML =
+          '<span class="pay-amount">৳' + fmt(p.bdt) + ' <span class="pay-usd">about $' + fmt(p.usd) + ' USD</span></span>' +
+          '<p>Send <b>৳' + fmt(p.bdt) + '</b> with <b>' + method + ' Send Money</b> to this number, then enter the transaction ID below.</p>' +
+          '<span class="pay-number">' + number + '<button class="copy-btn" type="button" data-copy="' + number + '" data-what="' + method + ' number" aria-label="Copy ' + method + ' number">' + copyIcon + '<span class="copy-text">Copy</span></button></span>';
+        txnField.hidden = false; txnInput.required = true;
+        if (window.wireCopy) window.wireCopy(payBox.querySelector('.copy-btn'));
+      }
+    }
+    orderForm.addEventListener('change', updatePay);
+    orderForm.addEventListener('reset', function(){ setTimeout(updatePay, 0); });
+    updatePay();
+  }
+
+  document.querySelectorAll('a[data-order]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      orderForm.elements['system'].value = a.dataset.order;
+      orderForm.dispatchEvent(new Event('change'));
+      document.getElementById('order').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+
+  // "Request a system" opens the message form instead, since custom work is priced case by case
+  document.querySelectorAll('a[data-topic]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      messageForm.elements['topic'].value = a.dataset.topic;
+      if (!messageForm.elements['message'].value.trim()) messageForm.elements['message'].value = a.dataset.message;
+      document.getElementById('message').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+})();
+
+document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
