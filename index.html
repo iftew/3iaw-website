@@ -817,6 +817,27 @@
   .pay-option input:disabled + span{opacity:.4; cursor:not-allowed;}
   .pay-option input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px;}
 
+  /* ---------- order & reviews tabs ---------- */
+  .shop-tabs{display:flex; gap:.5rem; margin:0 0 1.4rem; padding:.35rem; border:1px solid var(--line); border-radius:12px; background:var(--panel); width:fit-content; max-width:100%;}
+  .shop-tabs button{
+    display:inline-flex; align-items:center; gap:.45rem;
+    font:600 .92rem var(--font-body); color:var(--grey-mid); background:transparent;
+    border:0; border-radius:9px; padding:.65rem 1.1rem; cursor:pointer;
+    transition:color .15s ease, background .15s ease;
+  }
+  .shop-tabs button:hover{color:var(--white); background:rgba(255,255,255,.05);}
+  .shop-tabs button[aria-selected="true"]{color:var(--void); background:var(--white);}
+  .tab-count{font-size:.75rem; font-weight:700; border-radius:999px; padding:.05rem .45rem; background:var(--surface-2); color:var(--grey-light);}
+  .shop-tabs button[aria-selected="true"] .tab-count{background:var(--void); color:var(--white);}
+  .tab-count[hidden]{display:none;}
+  .shop-panel[hidden]{display:none;}
+  .shop-panel > .message-card{margin-top:0;}
+  .review-intro{margin:0 0 1.2rem; color:var(--grey-dim); font-size:.95rem;}
+  @media (max-width:560px){
+    .shop-tabs{width:100%; gap:.25rem;}
+    .shop-tabs button{flex:1; justify-content:center; padding:.65rem .4rem; font-size:.85rem;}
+  }
+
   /* ---------- reviews ---------- */
   .review-summary{display:flex; align-items:center; gap:1rem; margin:0 0 1.4rem; color:var(--grey-mid); font-size:.95rem;}
   .review-summary[hidden]{display:none;}
@@ -958,7 +979,7 @@
       <li><a href="#skills">Skills</a></li>
       <li><a href="#projects">Work</a></li>
       <li><a href="#services">Services</a></li>
-      <li><a href="#reviews">Reviews</a></li>
+      <li><a href="#shop">Order &amp; reviews</a></li>
       <li><a href="#achievements">Journey</a></li>
       <li><a href="#contact" class="nav-cta">Contact</a></li>
     </ul>
@@ -1516,7 +1537,24 @@
       </div>
     </article>
   </div>
-  <div class="message-card order-card reveal" id="order">
+</section>
+
+<section id="shop">
+  <div class="section-head reveal">
+    <div>
+      <span class="eyebrow">05 · Order &amp; reviews</span>
+      <h2>Order, then review.</h2>
+    </div>
+    <p>Place an order, read what other buyers say, or review something you bought.</p>
+  </div>
+  <div class="shop-tabs reveal" role="tablist" aria-label="Order and reviews">
+    <button type="button" role="tab" id="tab-order" aria-controls="panel-order" aria-selected="true" data-tab="order">Order</button>
+    <button type="button" role="tab" id="tab-reviews" aria-controls="panel-reviews" aria-selected="false" data-tab="reviews" tabindex="-1">Reviews <span class="tab-count" id="reviewCount" hidden></span></button>
+    <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" data-tab="review" tabindex="-1">Leave a review</button>
+  </div>
+
+  <div class="shop-panel" role="tabpanel" id="panel-order" aria-labelledby="tab-order">
+  <div class="message-card order-card" id="order">
     <div class="message-head">
       <h3>Order a system or UGC</h3>
       <p>Pay first, then place your order. Your item is sent to your email.</p>
@@ -1587,22 +1625,18 @@
       </div>
     </form>
   </div>
-</section>
+  </div>
 
-<section id="reviews">
-  <div class="section-head reveal">
-    <div>
-      <span class="eyebrow">05 · Reviews</span>
-      <h2>What buyers say.</h2>
+  <div class="shop-panel" role="tabpanel" id="panel-reviews" aria-labelledby="tab-reviews" hidden>
+    <p class="review-intro">Every review comes from a real purchase: an order placed here that I have confirmed was paid.</p>
+    <div class="review-summary" id="reviewSummary" hidden></div>
+    <div class="review-grid" id="reviewList">
+      <p class="review-empty">Loading reviews...</p>
     </div>
-    <p>Every review comes from a real purchase: an order placed here that I have confirmed was paid.</p>
-  </div>
-  <div class="review-summary reveal" id="reviewSummary" hidden></div>
-  <div class="review-grid reveal" id="reviewList">
-    <p class="review-empty">Loading reviews...</p>
   </div>
 
-  <div class="message-card review-card reveal" id="review">
+  <div class="shop-panel" role="tabpanel" id="panel-review" aria-labelledby="tab-review" hidden>
+  <div class="message-card review-card" id="review">
     <div class="message-head">
       <h3>Review your purchase</h3>
       <p>Bought a system or UGC? Tell others how it went.</p>
@@ -1657,6 +1691,7 @@
         <span class="form-status" role="status" aria-live="polite"></span>
       </div>
     </form>
+  </div>
   </div>
 </section>
 
@@ -2008,10 +2043,46 @@ document.body.classList.remove('no-js');
     .catch(function(){});                            // function down: keep the numbers written in the page
 })();
 
+// ---------- order & reviews tabs ----------
+// links to #order, #orderForm, #reviews, #review or #reviewForm open the matching tab
+(function(){
+  const tabs = [...document.querySelectorAll('.shop-tabs [role="tab"]')];
+  if (!tabs.length) return;
+  const HASH_TAB = { order: 'order', orderForm: 'order', reviews: 'reviews', review: 'review', reviewForm: 'review' };
+  function show(name, focus){
+    tabs.forEach(function(t){
+      const on = t.dataset.tab === name;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      if (on && focus) t.focus();
+    });
+  }
+  window.showShopTab = show;
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ show(t.dataset.tab); });
+    t.addEventListener('keydown', function(e){
+      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      show(tabs[(i + step + tabs.length) % tabs.length].dataset.tab, true);
+    });
+  });
+  function fromHash(){
+    const name = HASH_TAB[location.hash.slice(1)];
+    if (!name) return;
+    show(name);
+    document.getElementById('shop').scrollIntoView({block:'start'});
+  }
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+})();
+
 // ---------- buyer reviews (worker/index.js, /api/reviews) ----------
 (function(){
   const list = document.getElementById('reviewList');
   const summary = document.getElementById('reviewSummary');
+  const reviewCount = document.getElementById('reviewCount');
   const form = document.getElementById('reviewForm');
   if (!list || !form) return;
   const STAR = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>';
@@ -2029,12 +2100,13 @@ document.body.classList.remove('no-js');
   function render(){
     list.innerHTML = '';
     if (!reviews.length) {
-      list.appendChild(el('p', 'review-empty', 'No reviews yet. Bought a system? Be the first to review it below.'));
+      list.appendChild(el('p', 'review-empty', 'No reviews yet. Bought something? Be the first: open Leave a review.'));
       summary.hidden = true;
       return;
     }
     const avg = reviews.reduce(function(t, r){ return t + r.rating; }, 0) / reviews.length;
     summary.innerHTML = '<b>' + avg.toFixed(1) + '</b>' + stars(Math.round(avg)) + '<span>' + reviews.length + (reviews.length === 1 ? ' review' : ' reviews') + '</span>';
+    if (reviewCount) { reviewCount.textContent = reviews.length; reviewCount.hidden = false; }
     summary.hidden = false;
     reviews.forEach(function(r){
       // review text and names are set with textContent, never as HTML
@@ -2083,7 +2155,8 @@ document.body.classList.remove('no-js');
         render();
         form.reset();
         setStatus('Thanks! Your review is up.', 'ok');
-        list.scrollIntoView({behavior:'smooth', block:'start'});
+        if (window.showShopTab) window.showShopTab('reviews');
+        document.getElementById('shop').scrollIntoView({behavior:'smooth', block:'start'});
       });
     }).catch(function(err){
       // a TypeError means the request never reached the site
@@ -2421,6 +2494,7 @@ document.querySelectorAll('.spot').forEach(function(card){
       e.preventDefault();
       orderForm.elements['system'].value = a.dataset.order;
       orderForm.dispatchEvent(new Event('change'));
+      if (window.showShopTab) window.showShopTab('order');
       document.getElementById('order').scrollIntoView({behavior:'smooth', block:'start'});
     });
   });

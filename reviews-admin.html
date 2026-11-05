@@ -31,32 +31,48 @@
   .tag{display:inline-block; font-size:.75rem; font-weight:600; border-radius:999px; padding:.05rem .5rem; margin-left:.4rem; border:1px solid var(--line); color:var(--grey-mid);}
   .tag.paid{color:var(--ok); border-color:rgba(127,209,164,.45);}
   .actions{display:flex; flex-direction:column; gap:.4rem; flex:none;}
-  @media (max-width:520px){ .r{flex-direction:column;} .actions{flex-direction:row; width:100%;} .actions button{flex:1;} }
+  .tabs{display:flex; gap:.4rem; margin:1.4rem 0 1.2rem; padding:.3rem; border:1px solid var(--line); border-radius:12px; background:var(--panel); width:fit-content; max-width:100%;}
+  .tabs button{background:transparent; color:var(--grey-mid); border:0; border-radius:9px; padding:.55rem 1rem; display:inline-flex; align-items:center; gap:.4rem;}
+  .tabs button[aria-selected="true"]{background:var(--white); color:var(--void);}
+  .count{font-size:.75rem; border-radius:999px; padding:0 .45rem; background:var(--surface); color:var(--grey-light);}
+  .count:empty{display:none;}
+  .tabs button[aria-selected="true"] .count{background:var(--void); color:var(--white);}
+  section[hidden]{display:none;}
+  @media (max-width:520px){ .r{flex-direction:column;} .actions{flex-direction:row; width:100%;} .actions button{flex:1;} .tabs{width:100%;} .tabs button{flex:1; justify-content:center; padding:.55rem .3rem; font-size:.85rem;} }
 </style>
 </head>
 <body>
 <main>
   <h1>Orders &amp; reviews</h1>
-  <p>Only for you. Enter the REVIEWS_ADMIN_KEY you set in Netlify.</p>
+  <p>Only for you. Enter your REVIEWS_ADMIN_KEY (the admin password set in Cloudflare).</p>
   <form id="keyForm">
     <input type="password" id="key" placeholder="Admin key" autocomplete="current-password" required>
     <button type="submit">Unlock</button>
   </form>
 
-  <h2>Orders</h2>
-  <p>Every order is also emailed to you. Check each payment (bKash / Nagad: amount and transaction ID; Robux: the game pass sale), then press <b>Confirm payment</b>. The buyer can only leave a review after that. For Robux orders, check that the buyer bought the game pass on Roblox (Creator Dashboard, Sales) before confirming.</p>
-  <div class="status" id="ordersStatus" role="status" aria-live="polite"></div>
-  <div id="orders"></div>
+  <div class="tabs" role="tablist" aria-label="Admin">
+    <button type="button" role="tab" aria-selected="true" aria-controls="panel-orders" data-tab="orders">Orders <span class="count" id="ordersCount"></span></button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="panel-messages" data-tab="messages" tabindex="-1">Messages <span class="count" id="messagesCount"></span></button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="panel-reviews" data-tab="reviews" tabindex="-1">Reviews <span class="count" id="reviewsCount"></span></button>
+  </div>
 
-  <h2>Messages</h2>
-  <p>From the contact form. Each one is also emailed to you.</p>
-  <div class="status" id="messagesStatus" role="status" aria-live="polite"></div>
-  <div id="messages"></div>
+  <section role="tabpanel" id="panel-orders">
+    <p>Every order is also emailed to you. Check each payment (bKash / Nagad: amount and transaction ID; Robux: the game pass sale), then press <b>Confirm payment</b>. The buyer can only leave a review after that. For Robux orders, check that the buyer bought the game pass on Roblox (Creator Dashboard, Sales) before confirming.</p>
+    <div class="status" id="ordersStatus" role="status" aria-live="polite"></div>
+    <div id="orders"></div>
+  </section>
 
-  <h2>Reviews</h2>
-  <p>Delete any review that shouldn't be on the site.</p>
-  <div class="status" id="reviewsStatus" role="status" aria-live="polite"></div>
-  <div id="reviews"></div>
+  <section role="tabpanel" id="panel-messages" hidden>
+    <p>From the contact form. Each one is also emailed to you.</p>
+    <div class="status" id="messagesStatus" role="status" aria-live="polite"></div>
+    <div id="messages"></div>
+  </section>
+
+  <section role="tabpanel" id="panel-reviews" hidden>
+    <p>Delete any review that shouldn't be on the site.</p>
+    <div class="status" id="reviewsStatus" role="status" aria-live="polite"></div>
+    <div id="reviews"></div>
+  </section>
 </main>
 <script>
 (function(){
@@ -65,6 +81,27 @@
   try { key = sessionStorage.getItem('3iaw-admin-key') || ''; } catch (e) {}
   function setStatus(id, t, kind){ const s = document.getElementById(id); s.textContent = t; s.className = 'status' + (kind ? ' ' + kind : ''); }
   function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function setCount(id, n){ document.getElementById(id).textContent = n ? String(n) : ''; }
+
+  // Orders · Messages · Reviews tabs
+  const tabs = Array.prototype.slice.call(document.querySelectorAll('.tabs [role="tab"]'));
+  function showTab(name, focus){
+    tabs.forEach(function(t){
+      const on = t.dataset.tab === name;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      if (on && focus) t.focus();
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ showTab(t.dataset.tab); });
+    t.addEventListener('keydown', function(e){
+      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (step) { e.preventDefault(); showTab(tabs[(i + step + tabs.length) % tabs.length].dataset.tab, true); }
+    });
+  });
+
   function call(url, opts){
     opts = opts || {};
     opts.headers = Object.assign({ 'x-admin-key': key }, opts.headers || {});
@@ -79,8 +116,10 @@
     call('/api/orders').then(function(d){
       showMessages(d.messages || []);
       const orders = d.orders || [];
-      if (!orders.length) { setStatus('ordersStatus', 'No orders yet.'); return; }
       const waiting = orders.filter(function(o){ return !o.paid; }).length;
+      // the Orders tab shows how many are waiting for you
+      setCount('ordersCount', waiting);
+      if (!orders.length) { setStatus('ordersStatus', 'No orders yet.'); return; }
       setStatus('ordersStatus', orders.length + ' orders · ' + waiting + ' waiting for payment confirmation.');
       orders.forEach(function(o){
         const robux = o.payment === 'Robux';
@@ -114,6 +153,7 @@
   function showMessages(messages){
     const box = document.getElementById('messages');
     box.innerHTML = '';
+    setCount('messagesCount', messages.length);
     if (!messages.length) { setStatus('messagesStatus', 'No messages yet.'); return; }
     setStatus('messagesStatus', messages.length + ' messages.');
     messages.forEach(function(m){
@@ -132,6 +172,7 @@
     fetch('/api/reviews').then(function(r){ return r.json(); }).then(function(d){
       box.innerHTML = '';
       const reviews = d.reviews || [];
+      setCount('reviewsCount', reviews.length);
       if (!reviews.length) { setStatus('reviewsStatus', 'No reviews yet.'); return; }
       setStatus('reviewsStatus', key ? reviews.length + ' reviews.' : 'Enter your admin key to delete reviews.');
       reviews.forEach(function(r){
