@@ -58,6 +58,11 @@ const json = (body, status = 200, headers = {}) =>
 // a reason the visitor can act on; anything else is reported as a generic failure
 class Refusal extends Error {}
 
+// Roblox turns away requests that don't say who they are, so every call to it carries a User-Agent
+function roblox(url, opts = {}) {
+  return fetch(url, { ...opts, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 3iaw.com)', Accept: 'application/json', ...(opts.headers || {}) } });
+}
+
 const isAdmin = (req, env) => Boolean(env.REVIEWS_ADMIN_KEY) && req.headers.get('x-admin-key') === env.REVIEWS_ADMIN_KEY;
 
 async function listJson(env, prefix) {
@@ -116,7 +121,7 @@ async function robloxStats(req, ctx) {
   if (hit) return hit;
 
   const ids = UNIVERSES.join(',');
-  const get = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error('roblox ' + r.status); return r.json(); });
+  const get = (url) => roblox(url).then((r) => { if (!r.ok) throw new Error('roblox ' + r.status + ' ' + new URL(url).host); return r.json(); });
   // images are optional: if a thumbnail call fails the page keeps its own pictures
   const images = (url) => get(url).then((d) => d.data).catch(() => []);
   try {
@@ -147,14 +152,14 @@ async function robloxStats(req, ctx) {
   } catch (e) {
     console.error(e);
     // the page keeps its built-in numbers when this fails
-    return json({ error: 'unavailable' }, 502);
+    return json({ error: 'unavailable', detail: String(e.message) }, 502);
   }
 }
 
 // ---------- reviews ----------
 
 async function robloxUser(username) {
-  const r = await fetch('https://users.roblox.com/v1/usernames/users', {
+  const r = await roblox('https://users.roblox.com/v1/usernames/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
@@ -168,7 +173,7 @@ async function robloxUser(username) {
 async function confirmRobux(item, username) {
   const user = await robloxUser(username);
   // item type 1 = game pass
-  const r = await fetch('https://inventory.roblox.com/v1/users/' + user.id + '/items/1/' + GAMEPASSES[item] + '/is-owned');
+  const r = await roblox('https://inventory.roblox.com/v1/users/' + user.id + '/items/1/' + GAMEPASSES[item] + '/is-owned');
   if (!r.ok) throw new Error('roblox inventory ' + r.status);
   if ((await r.text()).trim() !== 'true') {
     throw new Refusal(user.name + " doesn't own the " + item + ' game pass. If you bought it, check that you typed the same Roblox account.');

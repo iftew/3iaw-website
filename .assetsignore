@@ -4,8 +4,7 @@
 .assetsignore
 wrangler.jsonc
 worker
-netlify
-netlify.toml
-package.json
 node_modules
 *.zip
+bun.lock
+package-lock.json
