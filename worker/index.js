@@ -204,7 +204,8 @@ async function placeOrder(req, env, ctx) {
   order.date = new Date().toISOString();
   await env.DATA.put('order:' + orderId, JSON.stringify(order));
 
-  ctx.waitUntil(notifyOwner(env, 'New order ' + orderId + ': ' + order.item + ' (' + order.price + ')', [
+  let emailError = null; // TEMP debug
+  await (notifyOwner(env, 'New order ' + orderId + ': ' + order.item + ' (' + order.price + ')', [
     'New order on 3iaw.com',
     '',
     'Order ID:        ' + orderId,
@@ -221,9 +222,9 @@ async function placeOrder(req, env, ctx) {
       ? 'Check that ' + order.username + ' bought the game pass on Roblox'
       : 'Check the ' + order.payment + ' payment') + ', then press "Confirm payment" at https://3iaw.com/reviews-admin.html so they can review it.',
     'Reply to this email to answer the buyer directly.',
-  ], order.email).catch((e) => console.error('order email', e)));
+  ], order.email).catch((e) => { emailError = String(e && (e.message || e)); console.error('order email', e); }));
 
-  return json({ ok: true, orderId });
+  return json({ ok: true, orderId, emailError, mailer: Boolean(env.MAILER) }); // TEMP debug
 }
 
 async function contact(req, env, ctx) {
