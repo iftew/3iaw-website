@@ -9,42 +9,24 @@
 //   GET    /api/orders              orders and messages (admin)
 //   POST   /api/orders              {orderId, paid} mark an order paid or undo it (admin)
 //
-// How a purchase is confirmed for a review:
-//   Robux        the Roblox user must own the item's game pass (Roblox's public is-owned check)
-//   bKash/Nagad  the order ID and email must match an order placed here, and the owner must have
-//                pressed "Confirm payment" for it in reviews-admin.html
+// How a purchase is confirmed for a review: the order ID and email must match an order placed here, and
+// the owner must have pressed "Confirm payment" for it in reviews-admin.html. That covers Robux buyers too:
+// Roblox blocks Cloudflare's shared servers, so the site can't ask Roblox who owns a game pass.
+//
+// The Roblox numbers come from .github/workflows/stats.yml, which publishes stats.json to the `data` branch.
 //
 // Bindings (wrangler.jsonc): DATA (KV), MAILER (send_email), ASSETS. Secret: REVIEWS_ADMIN_KEY.
 // KV keys: review:<id>, order:<orderId>, paid:<orderId>, message:<time>-<rand>
 
 import { EmailMessage } from 'cloudflare:email';
 
-// universe IDs (not place IDs), looked up from apis.roblox.com/universes/v1/places/<placeId>/universe
-const UNIVERSES = [
-  10479483082, // Bangali Era
-  10080882090, // Ondhokar
-  10764929985, // CTG CITY
-  9195047050,  // Bangali Hood (place 134757873036097)
-  9892395751,  // Bangla Town
-  10771061328, // Lumina Hangout
-  10770998037, // Bengali Society
-  10294847053, // Mystic Hangout
+// the items in the shop (index.html #shopData), plus agreed UGC
+const ITEMS = [
+  'Fly Race System', 'Game Essentials Pack', 'Rowboat System', 'Kite Fighting System', 'Donation System',
+  'Halloween Tools Pack', 'Partner System', 'Profile System', 'Concert Stage System', 'Custom UGC',
 ];
 
-// game pass IDs, copied from the gamepass links in index.html (#shopData)
-const GAMEPASSES = {
-  'Fly Race System': 2060123281,
-  'Game Essentials Pack': 2060261327,
-  'Rowboat System': 2057567344,
-  'Kite Fighting System': 2057423342,
-  'Donation System': 2058023335,
-  'Halloween Tools Pack': 2057447363,
-  'Partner System': 2060656564,
-  'Profile System': 2057621402,
-  'Concert Stage System': 2058263389,
-};
-// Custom UGC has no game pass: it's paid with bKash / Nagad, so only the order check applies
-const ITEMS = [...Object.keys(GAMEPASSES), 'Custom UGC'];
+const STATS_URL = 'https://raw.githubusercontent.com/iftew/3iaw-website/data/stats.json';
 
 // order emails go from the site to the owner; the owner's address must be verified in Cloudflare Email Routing
 const OWNER_EMAIL = 'pleasejoinmyteam@gmail.com';
@@ -57,19 +39,6 @@ const json = (body, status = 200, headers = {}) =>
 
 // a reason the visitor can act on; anything else is reported as a generic failure
 class Refusal extends Error {}
-
-// Roblox turns away requests that don't say who they are, so every call to it carries a User-Agent.
-// It also rate limits Cloudflare's shared servers (429), so a busy answer is retried a couple of times.
-async function roblox(url, opts = {}) {
-  const init = { ...opts, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 3iaw.com)', Accept: 'application/json', ...(opts.headers || {}) } };
-  let r;
-  for (const wait of [0, 800, 2000]) {
-    if (wait) await new Promise((done) => setTimeout(done, wait));
-    r = await fetch(url, init);
-    if (r.status !== 429 && r.status < 500) return r;
-  }
-  return r;
-}
 
 const isAdmin = (req, env) => Boolean(env.REVIEWS_ADMIN_KEY) && req.headers.get('x-admin-key') === env.REVIEWS_ADMIN_KEY;
 
@@ -121,87 +90,20 @@ async function notifyOwner(env, subject, lines, replyTo) {
 
 // ---------- live Roblox game info ----------
 
-// Roblox often answers Cloudflare's shared servers with 429 (too many requests), so visitors never wait on it:
-// a cron job (wrangler.jsonc "triggers") refreshes the numbers every 10 minutes into KV, and the page reads
-// the last good copy. A visit also refreshes the copy in the background when it's older than 15 minutes.
-const STATS_KEY = 'stats';
-const STATS_MAX_AGE = 15 * 60 * 1000;
-
-async function refreshStats(env) {
-  const ids = UNIVERSES.join(',');
-  const get = (url) => roblox(url).then((r) => { if (!r.ok) throw new Error('roblox ' + r.status + ' ' + new URL(url).host); return r.json(); });
-  // images are optional: if a thumbnail call fails, the pictures from the last good copy are kept
-  const images = (url) => get(url).then((d) => d.data).catch(() => []);
-  const [{ data }, thumbs, icons, previous] = await Promise.all([
-    get('https://games.roblox.com/v1/games?universeIds=' + ids),
-    images('https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=' + ids + '&countPerUniverse=1&size=768x432&format=Webp'),
-    images('https://thumbnails.roblox.com/v1/games/icons?universeIds=' + ids + '&size=256x256&format=Webp'),
-    env.DATA.get(STATS_KEY, 'json'),
-  ]);
-  const thumbOf = {};
-  for (const t of thumbs) {
-    const first = (t.thumbnails || [])[0];
-    if (first && first.state === 'Completed') thumbOf[t.universeId] = first.imageUrl;
+// the GitHub job refreshes stats.json every 15 minutes; Cloudflare keeps a copy for 5 minutes
+async function robloxStats() {
+  try {
+    const r = await fetch(STATS_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
+    if (!r.ok) throw new Error('stats.json ' + r.status);
+    return Response.json(await r.json(), { headers: { 'Cache-Control': 'public, max-age=300' } });
+  } catch (e) {
+    console.error(e);
+    // the page keeps its built-in numbers when this fails
+    return json({ error: 'unavailable' }, 502);
   }
-  const iconOf = {};
-  for (const i of icons) if (i.state === 'Completed') iconOf[i.targetId] = i.imageUrl;
-
-  const old = (previous && previous.games) || {};
-  const games = {};
-  let totalVisits = 0;
-  for (const g of data) {
-    games[g.id] = {
-      name: g.name, visits: g.visits, favorites: g.favoritedCount,
-      thumbnail: thumbOf[g.id] || (old[g.id] && old[g.id].thumbnail) || null,
-      icon: iconOf[g.id] || (old[g.id] && old[g.id].icon) || null,
-    };
-    totalVisits += g.visits;
-  }
-  const stats = { games, totalVisits, updated: new Date().toISOString() };
-  await env.DATA.put(STATS_KEY, JSON.stringify(stats));
-  return stats;
-}
-
-async function robloxStats(env, ctx) {
-  let stats = await env.DATA.get(STATS_KEY, 'json');
-  const stale = !stats || Date.now() - Date.parse(stats.updated) > STATS_MAX_AGE;
-  if (!stats) {
-    // nothing saved yet (first run): try Roblox now
-    try { stats = await refreshStats(env); } catch (e) {
-      console.error(e);
-      // the page keeps its built-in numbers when this fails
-      return json({ error: 'unavailable', detail: String(e.message) }, 502);
-    }
-  } else if (stale) {
-    ctx.waitUntil(refreshStats(env).catch((e) => console.error('stats refresh', e)));
-  }
-  return Response.json(stats, { headers: { 'Cache-Control': 'public, max-age=300' } });
 }
 
 // ---------- reviews ----------
-
-async function robloxUser(username) {
-  const r = await roblox('https://users.roblox.com/v1/usernames/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
-  });
-  if (!r.ok) throw new Error('roblox users ' + r.status);
-  const user = (await r.json()).data[0];
-  if (!user) throw new Refusal('No Roblox user is called "' + username + '".');
-  return user;
-}
-
-async function confirmRobux(item, username) {
-  const user = await robloxUser(username);
-  // item type 1 = game pass
-  const r = await roblox('https://inventory.roblox.com/v1/users/' + user.id + '/items/1/' + GAMEPASSES[item] + '/is-owned');
-  if (!r.ok) throw new Error('roblox inventory ' + r.status);
-  if ((await r.text()).trim() !== 'true') {
-    throw new Refusal(user.name + " doesn't own the " + item + ' game pass. If you bought it, check that you typed the same Roblox account.');
-  }
-  return { key: 'robux-' + user.id + '-' + item, name: user.name };
-}
 
 async function confirmOrder(env, item, orderId, email) {
   const order = await env.DATA.get('order:' + orderId, 'json');
@@ -211,7 +113,7 @@ async function confirmOrder(env, item, orderId, email) {
   if (!(await env.DATA.get('paid:' + orderId))) {
     throw new Refusal('Your payment for order ' + orderId + " hasn't been confirmed yet. You can review it once I confirm your payment.");
   }
-  return { key: 'order-' + orderId, name: String(order.username || 'Buyer').slice(0, 40) };
+  return { key: 'order-' + orderId, name: String(order.username || 'Buyer').slice(0, 40), payment: order.payment };
 }
 
 async function reviews(req, env) {
@@ -233,7 +135,6 @@ async function reviews(req, env) {
   let body;
   try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
   const item = String(body.item || '');
-  const method = String(body.method || '');
   const rating = Number(body.rating);
   const text = String(body.text || '').trim().slice(0, 1000);
   if (!ITEMS.includes(item)) return json({ error: 'Pick the item you bought.' }, 400);
@@ -241,24 +142,14 @@ async function reviews(req, env) {
   if (text.length < 3) return json({ error: 'Write a few words about your purchase.' }, 400);
 
   try {
-    let buyer;
-    if (method === 'Robux') {
-      if (!GAMEPASSES[item]) return json({ error: 'UGC is paid with bKash or Nagad, so review it with your order ID.' }, 400);
-      const username = String(body.username || '').trim();
-      if (!/^\w{3,20}$/.test(username)) return json({ error: 'Enter the Roblox username you bought with.' }, 400);
-      buyer = await confirmRobux(item, username);
-    } else if (method === 'bKash/Nagad') {
-      const orderId = String(body.orderId || '').trim().toUpperCase();
-      const email = String(body.email || '').trim().toLowerCase();
-      if (!/^3I-[A-Z0-9]{4,10}$/.test(orderId)) return json({ error: 'Enter your order ID, like 3I-ABC123.' }, 400);
-      if (!email.includes('@')) return json({ error: 'Enter the email you ordered with.' }, 400);
-      buyer = await confirmOrder(env, item, orderId, email);
-    } else {
-      return json({ error: 'Pick how you paid.' }, 400);
-    }
+    const orderId = String(body.orderId || '').trim().toUpperCase();
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^3I-[A-Z0-9]{4,10}$/.test(orderId)) return json({ error: 'Enter your order ID, like 3I-ABC123.' }, 400);
+    if (!email.includes('@')) return json({ error: 'Enter the email you ordered with.' }, 400);
+    const buyer = await confirmOrder(env, item, orderId, email);
 
     // one review per purchase; posting again replaces the earlier one
-    const review = { id: buyer.key, item, rating, text, name: buyer.name, method, date: new Date().toISOString() };
+    const review = { id: buyer.key, item, rating, text, name: buyer.name, method: buyer.payment, date: new Date().toISOString() };
     await env.DATA.put('review:' + buyer.key, JSON.stringify(review));
     return json({ review });
   } catch (e) {
@@ -326,9 +217,9 @@ async function placeOrder(req, env, ctx) {
     'Roblox username: ' + order.username,
     'Notes:           ' + (order.notes || '-'),
     '',
-    order.payment === 'Robux'
-      ? 'Robux order: they can review once they own the game pass.'
-      : 'Check the payment, then press "Confirm payment" at https://3iaw.com/reviews-admin.html so they can review it.',
+    (order.payment === 'Robux'
+      ? 'Check that ' + order.username + ' bought the game pass on Roblox'
+      : 'Check the ' + order.payment + ' payment') + ', then press "Confirm payment" at https://3iaw.com/reviews-admin.html so they can review it.',
     'Reply to this email to answer the buyer directly.',
   ], order.email).catch((e) => console.error('order email', e)));
 
@@ -392,17 +283,12 @@ async function orders(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname;
-    if (path === '/api/roblox-stats') return robloxStats(env, ctx);
+    if (path === '/api/roblox-stats') return robloxStats();
     if (path === '/api/reviews') return reviews(req, env);
     if (path === '/api/order') return placeOrder(req, env, ctx);
     if (path === '/api/contact') return contact(req, env, ctx);
     if (path === '/api/orders') return orders(req, env);
     if (path.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     return env.ASSETS.fetch(req);
-  },
-
-  // every 10 minutes (wrangler.jsonc "triggers"): refresh the saved Roblox numbers
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(refreshStats(env).catch((e) => console.error('stats refresh', e)));
   },
 };

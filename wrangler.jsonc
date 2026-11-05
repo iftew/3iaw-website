@@ -12,7 +12,5 @@
   "kv_namespaces": [
     { "binding": "DATA", "id": "8b92621caee5486183bc7ad08b996000" }
   ],
-  // refresh the saved Roblox numbers (worker/index.js scheduled)
-  "triggers": { "crons": ["*/10 * * * *"] },
   "observability": { "enabled": true }
 }

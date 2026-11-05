@@ -1595,7 +1595,7 @@
       <span class="eyebrow">05 · Reviews</span>
       <h2>What buyers say.</h2>
     </div>
-    <p>Every review comes from a confirmed purchase: a game pass owner on Roblox, or a paid order I have confirmed.</p>
+    <p>Every review comes from a real purchase: an order placed here that I have confirmed was paid.</p>
   </div>
   <div class="review-summary reveal" id="reviewSummary" hidden></div>
   <div class="review-grid reveal" id="reviewList">
@@ -1605,11 +1605,11 @@
   <div class="message-card review-card reveal" id="review">
     <div class="message-head">
       <h3>Review your purchase</h3>
-      <p>Bought one of my systems? Tell others how it went.</p>
+      <p>Bought a system or UGC? Tell others how it went.</p>
       <ol class="order-steps">
-        <li><b>Paid with Robux</b> Enter the Roblox username that owns the game pass. Roblox confirms it automatically.</li>
-        <li><b>Paid with bKash or Nagad</b> Once I have confirmed your payment, enter your order ID (like 3I-ABC123) and the email you ordered with.</li>
-        <li><b>One review per purchase</b> Posting again for the same purchase replaces your earlier review.</li>
+        <li><b>Order and pay</b> Robux, bKash or Nagad. You get an order ID like 3I-ABC123 when you order.</li>
+        <li><b>Wait for my confirmation</b> Once I have checked your payment, your review is unlocked.</li>
+        <li><b>Review it</b> Enter your order ID and the email you ordered with. Posting again replaces your earlier review.</li>
       </ol>
     </div>
     <form class="message-form" id="reviewForm">
@@ -1628,25 +1628,14 @@
           <option value="Custom UGC">Custom UGC</option>
         </select>
       </label>
-      <fieldset class="field pay-field">
-        <span>How you paid</span>
-        <div class="pay-options">
-          <label class="pay-option"><input type="radio" name="method" value="Robux" required checked><span>Robux</span></label>
-          <label class="pay-option"><input type="radio" name="method" value="bKash/Nagad"><span>bKash / Nagad</span></label>
-        </div>
-      </fieldset>
-      <label class="field" id="reviewUserField">
-        <span>Roblox username</span>
-        <input type="text" name="username" maxlength="20" placeholder="Account that owns the pass" required>
-      </label>
-      <div class="field-row" id="reviewOrderFields" hidden>
+      <div class="field-row">
         <label class="field">
           <span>Order ID</span>
-          <input type="text" name="orderId" maxlength="14" placeholder="3I-ABC123">
+          <input type="text" name="orderId" maxlength="14" placeholder="3I-ABC123" required>
         </label>
         <label class="field">
           <span>Email</span>
-          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="The email you ordered with">
+          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="The email you ordered with" required>
         </label>
       </div>
       <fieldset class="field star-input">
@@ -2058,7 +2047,7 @@ document.body.classList.remove('no-js');
       by.appendChild(el('span', null, r.item));
       const v = el('span', 'verified');
       v.innerHTML = CHECK;
-      v.appendChild(document.createTextNode(r.method === 'Robux' ? 'Owns the game pass' : 'Verified order'));
+      v.appendChild(document.createTextNode('Verified purchase'));
       by.appendChild(v);
       card.appendChild(top);
       card.appendChild(el('p', null, r.text));
@@ -2072,26 +2061,6 @@ document.body.classList.remove('no-js');
     .then(function(d){ reviews = d.reviews || []; render(); })
     .catch(function(){ list.innerHTML = ''; list.appendChild(el('p', 'review-empty', "Reviews couldn't load right now.")); });
 
-  // Robux buyers give their username; bKash / Nagad buyers give their order ID and email
-  const userField = document.getElementById('reviewUserField');
-  const orderFields = document.getElementById('reviewOrderFields');
-  function updateMethod(){
-    // UGC is only sold for bKash / Nagad, so its review is checked by order ID
-    const ugc = form.elements['item'].value === 'Custom UGC';
-    const robuxRadio = form.querySelector('input[name="method"][value="Robux"]');
-    robuxRadio.disabled = ugc;
-    robuxRadio.closest('.pay-option').hidden = ugc;
-    if (ugc && robuxRadio.checked) form.querySelector('input[name="method"][value="bKash/Nagad"]').checked = true;
-    const robux = form.elements['method'].value === 'Robux';
-    userField.hidden = !robux;
-    orderFields.hidden = robux;
-    form.elements['username'].required = robux;
-    form.elements['orderId'].required = !robux;
-    form.elements['email'].required = !robux;
-  }
-  form.addEventListener('change', updateMethod);
-  updateMethod();
-
   const status = form.querySelector('.form-status');
   const send = form.querySelector('button[type="submit"]');
   function setStatus(text, kind){ status.textContent = text; status.className = 'form-status' + (kind ? ' ' + kind : ''); }
@@ -2104,8 +2073,8 @@ document.body.classList.remove('no-js');
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        item: f['item'].value, method: f['method'].value, rating: Number(f['rating'].value), text: f['text'].value,
-        username: f['username'].value, orderId: f['orderId'].value, email: f['email'].value
+        item: f['item'].value, rating: Number(f['rating'].value), text: f['text'].value,
+        orderId: f['orderId'].value, email: f['email'].value
       })
     }).then(function(res){
       return res.json().catch(function(){ return {}; }).then(function(d){
@@ -2113,7 +2082,6 @@ document.body.classList.remove('no-js');
         reviews = [d.review].concat(reviews.filter(function(r){ return r.id !== d.review.id; }));
         render();
         form.reset();
-        updateMethod();
         setStatus('Thanks! Your review is up.', 'ok');
         list.scrollIntoView({behavior:'smooth', block:'start'});
       });
