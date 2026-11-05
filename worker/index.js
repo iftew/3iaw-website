@@ -58,9 +58,17 @@ const json = (body, status = 200, headers = {}) =>
 // a reason the visitor can act on; anything else is reported as a generic failure
 class Refusal extends Error {}
 
-// Roblox turns away requests that don't say who they are, so every call to it carries a User-Agent
-function roblox(url, opts = {}) {
-  return fetch(url, { ...opts, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 3iaw.com)', Accept: 'application/json', ...(opts.headers || {}) } });
+// Roblox turns away requests that don't say who they are, so every call to it carries a User-Agent.
+// It also rate limits Cloudflare's shared servers (429), so a busy answer is retried a couple of times.
+async function roblox(url, opts = {}) {
+  const init = { ...opts, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 3iaw.com)', Accept: 'application/json', ...(opts.headers || {}) } };
+  let r;
+  for (const wait of [0, 800, 2000]) {
+    if (wait) await new Promise((done) => setTimeout(done, wait));
+    r = await fetch(url, init);
+    if (r.status !== 429 && r.status < 500) return r;
+  }
+  return r;
 }
 
 const isAdmin = (req, env) => Boolean(env.REVIEWS_ADMIN_KEY) && req.headers.get('x-admin-key') === env.REVIEWS_ADMIN_KEY;
@@ -113,47 +121,61 @@ async function notifyOwner(env, subject, lines, replyTo) {
 
 // ---------- live Roblox game info ----------
 
-async function robloxStats(req, ctx) {
-  // the Cloudflare cache keeps the answer for 10 minutes, so Roblox is called a few times an hour at most
-  const cache = caches.default;
-  const cacheKey = new Request(new URL('/api/roblox-stats', req.url).toString());
-  const hit = await cache.match(cacheKey);
-  if (hit) return hit;
+// Roblox often answers Cloudflare's shared servers with 429 (too many requests), so visitors never wait on it:
+// a cron job (wrangler.jsonc "triggers") refreshes the numbers every 10 minutes into KV, and the page reads
+// the last good copy. A visit also refreshes the copy in the background when it's older than 15 minutes.
+const STATS_KEY = 'stats';
+const STATS_MAX_AGE = 15 * 60 * 1000;
 
+async function refreshStats(env) {
   const ids = UNIVERSES.join(',');
   const get = (url) => roblox(url).then((r) => { if (!r.ok) throw new Error('roblox ' + r.status + ' ' + new URL(url).host); return r.json(); });
-  // images are optional: if a thumbnail call fails the page keeps its own pictures
+  // images are optional: if a thumbnail call fails, the pictures from the last good copy are kept
   const images = (url) => get(url).then((d) => d.data).catch(() => []);
-  try {
-    const [{ data }, thumbs, icons] = await Promise.all([
-      get('https://games.roblox.com/v1/games?universeIds=' + ids),
-      images('https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=' + ids + '&countPerUniverse=1&size=768x432&format=Webp'),
-      images('https://thumbnails.roblox.com/v1/games/icons?universeIds=' + ids + '&size=256x256&format=Webp'),
-    ]);
-    const thumbOf = {};
-    for (const t of thumbs) {
-      const first = (t.thumbnails || [])[0];
-      if (first && first.state === 'Completed') thumbOf[t.universeId] = first.imageUrl;
-    }
-    const iconOf = {};
-    for (const i of icons) if (i.state === 'Completed') iconOf[i.targetId] = i.imageUrl;
-
-    const games = {};
-    let totalVisits = 0;
-    for (const g of data) {
-      games[g.id] = { name: g.name, visits: g.visits, favorites: g.favoritedCount, thumbnail: thumbOf[g.id] || null, icon: iconOf[g.id] || null };
-      totalVisits += g.visits;
-    }
-    const res = Response.json({ games, totalVisits, updated: new Date().toISOString() }, {
-      headers: { 'Cache-Control': 'public, max-age=600' },
-    });
-    ctx.waitUntil(cache.put(cacheKey, res.clone()));
-    return res;
-  } catch (e) {
-    console.error(e);
-    // the page keeps its built-in numbers when this fails
-    return json({ error: 'unavailable', detail: String(e.message) }, 502);
+  const [{ data }, thumbs, icons, previous] = await Promise.all([
+    get('https://games.roblox.com/v1/games?universeIds=' + ids),
+    images('https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=' + ids + '&countPerUniverse=1&size=768x432&format=Webp'),
+    images('https://thumbnails.roblox.com/v1/games/icons?universeIds=' + ids + '&size=256x256&format=Webp'),
+    env.DATA.get(STATS_KEY, 'json'),
+  ]);
+  const thumbOf = {};
+  for (const t of thumbs) {
+    const first = (t.thumbnails || [])[0];
+    if (first && first.state === 'Completed') thumbOf[t.universeId] = first.imageUrl;
   }
+  const iconOf = {};
+  for (const i of icons) if (i.state === 'Completed') iconOf[i.targetId] = i.imageUrl;
+
+  const old = (previous && previous.games) || {};
+  const games = {};
+  let totalVisits = 0;
+  for (const g of data) {
+    games[g.id] = {
+      name: g.name, visits: g.visits, favorites: g.favoritedCount,
+      thumbnail: thumbOf[g.id] || (old[g.id] && old[g.id].thumbnail) || null,
+      icon: iconOf[g.id] || (old[g.id] && old[g.id].icon) || null,
+    };
+    totalVisits += g.visits;
+  }
+  const stats = { games, totalVisits, updated: new Date().toISOString() };
+  await env.DATA.put(STATS_KEY, JSON.stringify(stats));
+  return stats;
+}
+
+async function robloxStats(env, ctx) {
+  let stats = await env.DATA.get(STATS_KEY, 'json');
+  const stale = !stats || Date.now() - Date.parse(stats.updated) > STATS_MAX_AGE;
+  if (!stats) {
+    // nothing saved yet (first run): try Roblox now
+    try { stats = await refreshStats(env); } catch (e) {
+      console.error(e);
+      // the page keeps its built-in numbers when this fails
+      return json({ error: 'unavailable', detail: String(e.message) }, 502);
+    }
+  } else if (stale) {
+    ctx.waitUntil(refreshStats(env).catch((e) => console.error('stats refresh', e)));
+  }
+  return Response.json(stats, { headers: { 'Cache-Control': 'public, max-age=300' } });
 }
 
 // ---------- reviews ----------
@@ -370,12 +392,17 @@ async function orders(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname;
-    if (path === '/api/roblox-stats') return robloxStats(req, ctx);
+    if (path === '/api/roblox-stats') return robloxStats(env, ctx);
     if (path === '/api/reviews') return reviews(req, env);
     if (path === '/api/order') return placeOrder(req, env, ctx);
     if (path === '/api/contact') return contact(req, env, ctx);
     if (path === '/api/orders') return orders(req, env);
     if (path.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     return env.ASSETS.fetch(req);
+  },
+
+  // every 10 minutes (wrangler.jsonc "triggers"): refresh the saved Roblox numbers
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshStats(env).catch((e) => console.error('stats refresh', e)));
   },
 };
