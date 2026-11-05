@@ -8,3 +8,5 @@ node_modules
 *.zip
 bun.lock
 package-lock.json
+.github
+scripts

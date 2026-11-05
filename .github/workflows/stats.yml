@@ -1,0 +1,37 @@
+# Every 15 minutes: fetch the games' live Roblox numbers and publish them as stats.json on the `data` branch,
+# which the site reads (worker/index.js, /api/roblox-stats). The branch holds a single commit that is replaced
+# each run, so it never grows.
+name: Refresh Roblox stats
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roblox-stats
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the last published stats
+        run: git fetch -q origin data --depth=1 && git show origin/data:stats.json > previous.json || echo '{}' > previous.json
+
+      - name: Fetch from Roblox
+        run: node scripts/refresh-stats.mjs previous.json stats.json
+
+      - name: Publish to the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir publish && cp stats.json publish/ && cd publish
+          git init -q -b data
+          git add stats.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -m 'Update Roblox stats [skip ci]'
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
