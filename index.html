@@ -1526,9 +1526,7 @@
         <li><b>Get it, then review it</b> Once your payment is confirmed, I email your item to you. After that you can leave a review with your order ID.</li>
       </ol>
     </div>
-    <form class="message-form" id="orderForm" name="order" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
-      <input type="hidden" name="form-name" value="order">
-      <input type="hidden" name="order_id" value="">
+    <form class="message-form" id="orderForm" name="order" method="POST" action="/api/order">
       <input type="hidden" name="price" value="">
       <p class="hp-field" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
       <label class="field">
@@ -1751,8 +1749,7 @@
       <h3>Send me a message</h3>
       <p>Write it here and it comes straight to me. Leave your Discord or email so I can reply.</p>
     </div>
-    <form class="message-form" id="messageForm" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/">
-      <input type="hidden" name="form-name" value="contact">
+    <form class="message-form" id="messageForm" name="contact" method="POST" action="/api/contact">
       <p class="hp-field" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
       <div class="field-row">
         <label class="field">
@@ -1963,7 +1960,7 @@ document.body.classList.remove('no-js');
     .catch(function(){});                            // counter down: keep the last known number (or stay hidden)
 })();
 
-// ---------- live Roblox game info (netlify/functions/roblox-stats.mjs) ----------
+// ---------- live Roblox game info (worker/index.js, /api/roblox-stats) ----------
 // the names, pictures and numbers written in the page are the fallback; they're replaced once the live data arrives
 (function(){
   const els = document.querySelectorAll('[data-stat]');
@@ -2022,7 +2019,7 @@ document.body.classList.remove('no-js');
     .catch(function(){});                            // function down: keep the numbers written in the page
 })();
 
-// ---------- buyer reviews (netlify/functions/reviews.mjs) ----------
+// ---------- buyer reviews (worker/index.js, /api/reviews) ----------
 (function(){
   const list = document.getElementById('reviewList');
   const summary = document.getElementById('reviewSummary');
@@ -2284,7 +2281,7 @@ document.querySelectorAll('.spot').forEach(function(card){
   document.querySelectorAll('.copy-btn').forEach(wireCopy);
 })();
 
-// ---------- message + order forms (Netlify Forms) ----------
+// ---------- message + order forms (worker/index.js, /api/order and /api/contact) ----------
 (function(){
   // common misspellings of email providers; an order sent to a misspelled address can never be answered
   const DOMAIN_FIXES = {
@@ -2355,20 +2352,22 @@ document.querySelectorAll('.spot').forEach(function(card){
         emailInput.focus();
         return;
       }
-      if (form.elements['order_id']) form.elements['order_id'].value = '3I-' + Date.now().toString(36).toUpperCase().slice(-6);
       send.disabled = true;
       setStatus('Sending...');
-      fetch('/', {
+      fetch(form.getAttribute('action'), {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams(new FormData(form)).toString()
       }).then(function(res){
-        if (!res.ok) throw new Error(res.status);
-        const done = successText(form);
-        form.reset();
-        setStatus(done, 'ok');
-      }).catch(function(){
-        setStatus('Could not send right now. Please email or DM me on Discord instead.', 'err');
+        return res.json().catch(function(){ return {}; }).then(function(d){
+          // the server explains what's missing (a 400 with a message); anything else is a connection problem
+          if (!res.ok) throw new Error(res.status === 400 && d.error ? d.error : '');
+          const done = successText(form, d);
+          form.reset();
+          setStatus(done, 'ok');
+        });
+      }).catch(function(err){
+        setStatus(err.message || 'Could not send right now. Please email or DM me on Discord instead.', 'err');
       }).finally(function(){ send.disabled = false; });
     });
   }
@@ -2376,8 +2375,9 @@ document.querySelectorAll('.spot').forEach(function(card){
   const messageForm = document.getElementById('messageForm');
   const orderForm = document.getElementById('orderForm');
   if (messageForm) wire(messageForm, function(){ return 'Sent! I will get back to you soon.'; });
-  if (orderForm) wire(orderForm, function(f){
-    const id = f.elements['order_id'].value;
+  if (orderForm) wire(orderForm, function(f, d){
+    // the server picks the order ID
+    const id = d.orderId;
     const what = f.elements['system'].value === 'Custom UGC' ? 'your UGC' : 'the system';
     return 'Order ' + id + ' received! Once I confirm your payment, I will email ' + what + ' to ' + f.elements['email'].value + '. After that, you can leave a review in the Reviews section with order ID ' + id + '.';
   });

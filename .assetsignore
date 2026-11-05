@@ -1,0 +1,11 @@
+# files in the repo that are not part of the public site
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+worker
+netlify
+netlify.toml
+package.json
+node_modules
+*.zip

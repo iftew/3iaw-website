@@ -1,0 +1,17 @@
+// Cloudflare Workers config for 3iaw.com: the repo's files are the site, worker/index.js answers /api/*.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "3iaw-website",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // reviews, orders, paid marks and contact messages
+  "kv_namespaces": [
+    { "binding": "DATA", "id": "KV_NAMESPACE_ID" }
+  ],
+  "observability": { "enabled": true }
+}

@@ -44,9 +44,14 @@
   </form>
 
   <h2>Orders</h2>
-  <p>Check each bKash / Nagad payment (amount and transaction ID), then press <b>Confirm payment</b>. The buyer can only leave a review after that. Robux buyers don't need this: owning the game pass is their proof.</p>
+  <p>Every order is also emailed to you. Check each bKash / Nagad payment (amount and transaction ID), then press <b>Confirm payment</b>. The buyer can only leave a review after that. Robux buyers don't need this: owning the game pass is their proof.</p>
   <div class="status" id="ordersStatus" role="status" aria-live="polite"></div>
   <div id="orders"></div>
+
+  <h2>Messages</h2>
+  <p>From the contact form. Each one is also emailed to you.</p>
+  <div class="status" id="messagesStatus" role="status" aria-live="polite"></div>
+  <div id="messages"></div>
 
   <h2>Reviews</h2>
   <p>Delete any review that shouldn't be on the site.</p>
@@ -72,34 +77,56 @@
     if (!key) { setStatus('ordersStatus', 'Enter your admin key to see orders.'); return; }
     setStatus('ordersStatus', 'Loading orders...');
     call('/api/orders').then(function(d){
-      const orders = (d.orders || []).filter(function(o){ return o.payment !== 'Robux'; });
-      if (!orders.length) { setStatus('ordersStatus', 'No bKash / Nagad orders yet.'); return; }
-      const waiting = orders.filter(function(o){ return !o.paid; }).length;
-      setStatus('ordersStatus', waiting + ' waiting for payment confirmation, ' + (orders.length - waiting) + ' confirmed.');
+      showMessages(d.messages || []);
+      const orders = d.orders || [];
+      if (!orders.length) { setStatus('ordersStatus', 'No orders yet.'); return; }
+      const waiting = orders.filter(function(o){ return o.payment !== 'Robux' && !o.paid; }).length;
+      setStatus('ordersStatus', orders.length + ' orders · ' + waiting + ' bKash / Nagad waiting for payment confirmation.');
       orders.forEach(function(o){
+        const robux = o.payment === 'Robux';
         const row = el('div', 'r' + (o.paid ? ' paid' : ''));
         const body = el('div');
         const title = el('b', null, o.orderId + ' · ' + o.item);
-        const tag = el('span', 'tag' + (o.paid ? ' paid' : ''), o.paid ? 'Paid' : 'Not confirmed');
-        title.appendChild(tag);
+        title.appendChild(el('span', 'tag' + (o.paid ? ' paid' : ''), robux ? 'Robux' : (o.paid ? 'Paid' : 'Not confirmed')));
         body.appendChild(title);
-        body.appendChild(el('div', 'meta', (o.price || '') + ' · ' + (o.payment || '') + ' · Transaction ID: ' + (o.transactionId || '(none)')));
+        body.appendChild(el('div', 'meta', (o.price || '') + ' · ' + (o.payment || '') + (robux ? '' : ' · Transaction ID: ' + (o.transactionId || '(none)'))));
         if (o.ugc) body.appendChild(el('div', 'meta', 'UGC: ' + o.ugc));
         body.appendChild(el('div', 'meta', (o.username || '') + ' · ' + (o.email || '') + ' · ' + new Date(o.date).toLocaleString()));
-        const actions = el('div', 'actions');
-        const btn = el('button', 'small' + (o.paid ? ' undo' : ''), o.paid ? 'Undo' : 'Confirm payment');
-        btn.type = 'button';
-        btn.addEventListener('click', function(){
-          btn.disabled = true;
-          call('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: o.orderId, paid: !o.paid }) })
-            .then(function(){ loadOrders(); })
-            .catch(function(e){ btn.disabled = false; setStatus('ordersStatus', 'Not saved: ' + e.message, 'err'); });
-        });
-        actions.appendChild(btn);
-        row.appendChild(body); row.appendChild(actions);
+        if (o.notes) body.appendChild(el('p', 'text', o.notes));
+        row.appendChild(body);
+        // Robux buyers are checked against the game pass, so only bKash / Nagad orders need confirming
+        if (!robux) {
+          const actions = el('div', 'actions');
+          const btn = el('button', 'small' + (o.paid ? ' undo' : ''), o.paid ? 'Undo' : 'Confirm payment');
+          btn.type = 'button';
+          btn.addEventListener('click', function(){
+            btn.disabled = true;
+            call('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: o.orderId, paid: !o.paid }) })
+              .then(function(){ loadOrders(); })
+              .catch(function(e){ btn.disabled = false; setStatus('ordersStatus', 'Not saved: ' + e.message, 'err'); });
+          });
+          actions.appendChild(btn);
+          row.appendChild(actions);
+        }
         box.appendChild(row);
       });
     }).catch(function(e){ setStatus('ordersStatus', "Orders couldn't load: " + e.message, 'err'); });
+  }
+
+  function showMessages(messages){
+    const box = document.getElementById('messages');
+    box.innerHTML = '';
+    if (!messages.length) { setStatus('messagesStatus', 'No messages yet.'); return; }
+    setStatus('messagesStatus', messages.length + ' messages.');
+    messages.forEach(function(m){
+      const row = el('div', 'r');
+      const body = el('div');
+      body.appendChild(el('b', null, m.name + ' · ' + m.topic));
+      body.appendChild(el('div', 'meta', 'Reply to: ' + m.replyTo + ' · ' + new Date(m.date).toLocaleString()));
+      body.appendChild(el('p', 'text', m.message));
+      row.appendChild(body);
+      box.appendChild(row);
+    });
   }
 
   function loadReviews(){
