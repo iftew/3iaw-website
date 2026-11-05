@@ -185,11 +185,19 @@
         const del = el('button', 'small del', 'Delete');
         del.type = 'button';
         del.disabled = !key;
+        // tap twice instead of a confirm() box, which some in-app and phone browsers block silently
+        let armed = false;
         del.addEventListener('click', function(){
-          if (!confirm('Delete this review by ' + r.name + '?')) return;
+          if (!armed) {
+            armed = true;
+            del.textContent = 'Tap again to delete';
+            setTimeout(function(){ armed = false; del.textContent = 'Delete'; }, 4000);
+            return;
+          }
+          del.disabled = true;
           call('/api/reviews?id=' + encodeURIComponent(r.id), { method: 'DELETE' })
-            .then(function(){ row.remove(); setStatus('reviewsStatus', 'Deleted.', 'ok'); })
-            .catch(function(e){ setStatus('reviewsStatus', 'Not deleted: ' + e.message, 'err'); });
+            .then(function(){ row.remove(); setStatus('reviewsStatus', 'Deleted. It disappears from the site within a minute.', 'ok'); })
+            .catch(function(e){ del.disabled = false; setStatus('reviewsStatus', 'Not deleted: ' + e.message, 'err'); });
         });
         actions.appendChild(del);
         row.appendChild(body); row.appendChild(actions);
