@@ -12,6 +12,10 @@
   "kv_namespaces": [
     { "binding": "DATA", "id": "8b92621caee5486183bc7ad08b996000" }
   ],
+  // order and contact emails to the owner (the address is verified in Email Routing)
+  "send_email": [
+    { "name": "MAILER", "destination_address": "pleasejoinmyteam@gmail.com" }
+  ],
   // the site's domains (Cloudflare creates their DNS records and certificates)
   "routes": [
     { "pattern": "3iaw.com", "custom_domain": true },
