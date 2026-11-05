@@ -168,7 +168,7 @@ async function readForm(req) {
 }
 const field = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 
-async function placeOrder(req, env, ctx) {
+async function placeOrder(req, env) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
   let f;
   try { f = await readForm(req); } catch { return json({ error: 'Bad request.' }, 400); }
@@ -204,8 +204,8 @@ async function placeOrder(req, env, ctx) {
   order.date = new Date().toISOString();
   await env.DATA.put('order:' + orderId, JSON.stringify(order));
 
-  let emailError = null; // TEMP debug
-  await (notifyOwner(env, 'New order ' + orderId + ': ' + order.item + ' (' + order.price + ')', [
+  // waiting for the email (instead of sending it in the background) makes sure it goes out
+  await notifyOwner(env, 'New order ' + orderId + ': ' + order.item + ' (' + order.price + ')', [
     'New order on 3iaw.com',
     '',
     'Order ID:        ' + orderId,
@@ -222,12 +222,12 @@ async function placeOrder(req, env, ctx) {
       ? 'Check that ' + order.username + ' bought the game pass on Roblox'
       : 'Check the ' + order.payment + ' payment') + ', then press "Confirm payment" at https://3iaw.com/reviews-admin.html so they can review it.',
     'Reply to this email to answer the buyer directly.',
-  ], order.email).catch((e) => { emailError = String(e && (e.message || e)); console.error('order email', e); }));
+  ], order.email).catch((e) => console.error('order email', e));
 
-  return json({ ok: true, orderId, emailError, mailer: Boolean(env.MAILER) }); // TEMP debug
+  return json({ ok: true, orderId });
 }
 
-async function contact(req, env, ctx) {
+async function contact(req, env) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
   let f;
   try { f = await readForm(req); } catch { return json({ error: 'Bad request.' }, 400); }
@@ -243,7 +243,7 @@ async function contact(req, env, ctx) {
   if (!msg.name || !msg.replyTo || !msg.message) return json({ error: 'Fill in your name, how to reach you and your message.' }, 400);
   await env.DATA.put('message:' + Date.now() + '-' + crypto.randomUUID().slice(0, 8), JSON.stringify(msg));
 
-  ctx.waitUntil(notifyOwner(env, 'Message from ' + msg.name + ': ' + msg.topic, [
+  await notifyOwner(env, 'Message from ' + msg.name + ': ' + msg.topic, [
     'New message on 3iaw.com',
     '',
     'Name:     ' + msg.name,
@@ -251,7 +251,7 @@ async function contact(req, env, ctx) {
     'Topic:    ' + msg.topic,
     '',
     msg.message,
-  ], msg.replyTo).catch((e) => console.error('contact email', e)));
+  ], msg.replyTo).catch((e) => console.error('contact email', e));
 
   return json({ ok: true });
 }
@@ -286,8 +286,8 @@ export default {
     const path = new URL(req.url).pathname;
     if (path === '/api/roblox-stats') return robloxStats();
     if (path === '/api/reviews') return reviews(req, env);
-    if (path === '/api/order') return placeOrder(req, env, ctx);
-    if (path === '/api/contact') return contact(req, env, ctx);
+    if (path === '/api/order') return placeOrder(req, env);
+    if (path === '/api/contact') return contact(req, env);
     if (path === '/api/orders') return orders(req, env);
     if (path.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     return env.ASSETS.fetch(req);
