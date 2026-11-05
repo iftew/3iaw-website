@@ -7,7 +7,7 @@ const UNIVERSES = [
   10479483082, // Bangali Era
   10080882090, // Ondhokar
   10764929985, // CTG CITY
-  9898429697,  // Bangali Hood
+  9195047050,  // Bangali Hood (place 134757873036097)
   9892395751,  // Bangla Town
   10771061328, // Lumina Hangout
   10770998037, // Bengali Society
