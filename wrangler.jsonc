@@ -12,5 +12,10 @@
   "kv_namespaces": [
     { "binding": "DATA", "id": "8b92621caee5486183bc7ad08b996000" }
   ],
+  // the site's domains (Cloudflare creates their DNS records and certificates)
+  "routes": [
+    { "pattern": "3iaw.com", "custom_domain": true },
+    { "pattern": "www.3iaw.com", "custom_domain": true }
+  ],
   "observability": { "enabled": true }
 }
