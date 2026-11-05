@@ -138,7 +138,7 @@
   nav a{
     position:relative; display:block;
     text-decoration:none; color:var(--grey-mid); font-size:0.93rem; font-weight:500;
-    padding:.45rem .85rem; border-radius:8px;
+    padding:.45rem .85rem; border-radius:8px; white-space:nowrap;
     transition: color 0.15s ease, background .15s ease;
   }
   nav a:hover{color:var(--white); background:rgba(255,255,255,.05);}
@@ -831,11 +831,13 @@
   .shop-tabs button[aria-selected="true"] .tab-count{background:var(--void); color:var(--white);}
   .tab-count[hidden]{display:none;}
   .shop-panel[hidden]{display:none;}
+  .tab-short{display:none;}
   .shop-panel > .message-card{margin-top:0;}
   .review-intro{margin:0 0 1.2rem; color:var(--grey-dim); font-size:.95rem;}
   @media (max-width:560px){
     .shop-tabs{width:100%; gap:.25rem;}
-    .shop-tabs button{flex:1; justify-content:center; padding:.65rem .4rem; font-size:.85rem;}
+    .shop-tabs button{flex:1; justify-content:center; padding:.65rem .4rem; font-size:.85rem; white-space:nowrap;}
+    .tab-long{display:none;} .tab-short{display:inline;}
   }
 
   /* ---------- reviews ---------- */
@@ -1550,7 +1552,7 @@
   <div class="shop-tabs reveal" role="tablist" aria-label="Order and reviews">
     <button type="button" role="tab" id="tab-order" aria-controls="panel-order" aria-selected="true" data-tab="order">Order</button>
     <button type="button" role="tab" id="tab-reviews" aria-controls="panel-reviews" aria-selected="false" data-tab="reviews" tabindex="-1">Reviews <span class="tab-count" id="reviewCount" hidden></span></button>
-    <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" data-tab="review" tabindex="-1">Leave a review</button>
+    <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" data-tab="review" tabindex="-1"><span class="tab-long">Leave a review</span><span class="tab-short">Write review</span></button>
   </div>
 
   <div class="shop-panel" role="tabpanel" id="panel-order" aria-labelledby="tab-order">
