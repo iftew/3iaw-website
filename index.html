@@ -190,31 +190,6 @@
     nav ul{flex-direction:column; gap:2px;}
     nav a{padding:.8rem 1rem; font-size:1rem;}
   }
-
-  /* ---------- mute toggle ---------- */
-  .mute-toggle{
-    position:fixed; right:1.4rem; bottom:1.4rem; z-index:60;
-    height:44px; padding:0 14px; gap:8px;
-    display:flex; align-items:center; justify-content:center;
-    background:rgba(19,19,22,0.85);
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-    border:1px solid var(--line); border-radius:11px;
-    color:var(--grey-light); cursor:pointer;
-    font:500 .78rem var(--font-body);
-    transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
-  }
-  .mute-toggle:hover{ border-color:var(--grey-mid); color:var(--white); }
-  .mute-toggle:active{ transform:translateY(1px); }
-  .mute-toggle[aria-pressed="true"]{ color:var(--grey-dim); }
-  .eq{display:flex; align-items:flex-end; gap:2px; height:14px;}
-  .eq i{display:block; width:3px; background:currentColor; border-radius:1px; animation:eq 1s ease-in-out infinite;}
-  .eq i:nth-child(1){height:40%; animation-delay:-.2s;}
-  .eq i:nth-child(2){height:100%; animation-delay:-.5s;}
-  .eq i:nth-child(3){height:60%; animation-delay:-.8s;}
-  .mute-toggle[aria-pressed="true"] .eq i{animation:none; height:20%;}
-  @keyframes eq{0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)}}
-  .eq i{transform-origin:bottom;}
-
   /* ---------- hero ---------- */
   .hero{
     position:relative; min-height:calc(100vh - 70px);
@@ -939,10 +914,7 @@
     .proj-tag{font-size:.75rem;}
     .game .game-thumb .game-badge{font-size:.75rem;}
     .timeline{padding-left:2.6rem;}
-    /* the sound button shrinks to an icon and the footer leaves room for it */
-    .mute-toggle{right:16px; bottom:16px; padding:0; width:44px;}
-    #muteLabel{display:none;}
-    footer{padding:1.6rem 20px 5.5rem; flex-direction:column; align-items:flex-start;}
+    footer{padding:1.6rem 20px; flex-direction:column; align-items:flex-start;}
   }
 </style>
 </head>
@@ -987,12 +959,6 @@
     </ul>
   </nav>
 </header>
-
-<audio id="bgAudio" src="assets/music.mp3" preload="auto"></audio>
-<button id="muteToggle" class="mute-toggle" type="button" aria-label="Mute background music" aria-pressed="false">
-  <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
-  <span id="muteLabel">Sound on</span>
-</button>
 
 <main>
 <section class="hero" id="top">
@@ -2164,49 +2130,6 @@ document.body.classList.remove('no-js');
       // a TypeError means the request never reached the site
       setStatus(err instanceof TypeError ? 'Could not post your review right now. Please try again later.' : err.message, 'err');
     }).finally(function(){ send.disabled = false; });
-  });
-})();
-
-// ---------- background music ----------
-(function(){
-  const audio = document.getElementById('bgAudio');
-  const btn = document.getElementById('muteToggle');
-  const label = document.getElementById('muteLabel');
-  if (!audio || !btn) return;
-
-  audio.volume = 0.03;   // kept very quiet on purpose
-  audio.loop = true;
-
-  function setMutedUI(isMuted){
-    btn.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
-    btn.setAttribute('aria-label', isMuted ? 'Unmute background music' : 'Mute background music');
-    label.textContent = isMuted ? 'Sound off' : 'Sound on';
-  }
-
-  function tryPlay(){
-    const p = audio.play();
-    if (p && p.catch) {
-      p.catch(function(){
-        // autoplay with sound was blocked; start on the first interaction instead
-        const resume = function(e){
-          if (e && btn.contains(e.target)) return; // the button handles itself
-          audio.play().catch(function(){});
-          window.removeEventListener('pointerdown', resume);
-          window.removeEventListener('keydown', resume);
-        };
-        window.addEventListener('pointerdown', resume);
-        window.addEventListener('keydown', resume);
-      });
-    }
-  }
-
-  setMutedUI(audio.muted);
-  tryPlay();
-
-  btn.addEventListener('click', function(){
-    audio.muted = !audio.muted;
-    if (!audio.muted) { tryPlay(); }
-    setMutedUI(audio.muted);
   });
 })();
 
