@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /reviews-admin
+Disallow: /api/
+
+Sitemap: https://3iaw.com/sitemap.xml
