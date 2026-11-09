@@ -687,6 +687,28 @@
   .sys-label{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--grey-dim);}
   .sys-perfect .chip{font-size:.8rem; padding:.35rem .7rem;}
   .sys-cta{align-self:flex-start; margin-top:auto;}
+  /* Order now + Preview side by side (the Preview button is added by the shop script when a system has a video) */
+  .sys-actions{display:flex; flex-wrap:wrap; gap:.6rem; align-self:flex-start; margin-top:auto;}
+  .sys-actions .sys-cta{margin-top:0;}
+  .sys-preview svg{transition:none;}
+  .btn.sys-preview:hover svg{transform:none;}
+
+  /* preview video pop-up */
+  .video-modal{
+    width:min(960px, calc(100vw - 32px)); max-width:none; padding:0; margin:auto;
+    border:1px solid var(--line); border-radius:16px; background:var(--panel); color:var(--grey-light);
+    box-shadow:0 30px 80px rgba(0,0,0,.6); overflow:hidden;
+  }
+  .video-modal::backdrop{background:rgba(5,5,7,.82); backdrop-filter:blur(4px);}
+  .video-head{display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.8rem .9rem .8rem 1.2rem;}
+  .video-head h3{margin:0; font-family:var(--font-display); font-weight:700; font-size:1.15rem; color:var(--white); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .video-close{flex:none; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--white); cursor:pointer;}
+  .video-close:hover{background:var(--surface-2);}
+  .video-frame{position:relative; aspect-ratio:16/9; background:#000;}
+  .video-frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
+  .video-yt{display:block; padding:.75rem 1.2rem; font-size:.85rem; color:var(--grey-mid); text-decoration:none;}
+  .video-yt:hover{color:var(--white); text-decoration:underline; text-underline-offset:3px;}
+  @media (max-width:560px){ .sys-actions{width:100%;} .sys-actions .btn{flex:1; justify-content:center; white-space:nowrap; padding-left:.6rem; padding-right:.6rem;} }
   .sys-concert .sys-cta{background:#4fb4ff; color:#04101f; box-shadow:0 8px 30px rgba(79,180,255,.25);}
   .sys-concert .sys-cta:hover{background:#7cc7ff;}
   .sys-soon{border-style:dashed; background:rgba(19,19,22,.6); justify-content:center;}
@@ -1873,20 +1895,32 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<!-- system preview videos (filled in by the shop script from each system's "video" link) -->
+<dialog class="video-modal" id="videoModal" aria-labelledby="videoTitle">
+  <div class="video-head">
+    <h3 id="videoTitle">Preview</h3>
+    <button type="button" class="video-close" id="videoClose" aria-label="Close preview">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="video-frame"><iframe id="videoFrame" title="System preview video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+  <a class="video-yt" id="videoYouTube" href="#" target="_blank" rel="noopener">Watch on YouTube</a>
+</dialog>
+
 <script id="shopData" type="application/json">
 {
   "bkash": "01978664169",
   "nagad": "01978664169",
   "systems": {
-    "Fly Race System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2060123281/4286" },
-    "Game Essentials Pack": { "robux": 5715, "bdt": 4000, "usd": 33, "gamepass": "https://www.roblox.com/game-pass/2060261327/5715" },
-    "Rowboat System":       { "robux": 1143, "bdt": 800, "usd": 7, "gamepass": "https://www.roblox.com/game-pass/2057567344/1143" },
-    "Kite Fighting System": { "robux": 1429, "bdt": 1000, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057423342/1429" },
-    "Donation System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2058023335/4286" },
-    "Halloween Tools Pack": { "robux": 1400, "bdt": 980, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057447363/1400" },
-    "Partner System":       { "robux": 1715, "bdt": 1200, "usd": 10, "gamepass": "https://www.roblox.com/game-pass/2060656564/1715" },
-    "Profile System":       { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2057621402/4286" },
-    "Concert Stage System": { "robux": 8572, "bdt": 6000, "usd": 50, "gamepass": "https://www.roblox.com/game-pass/2058263389/8572" }
+    "Fly Race System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2060123281/4286", "video": "" },
+    "Game Essentials Pack": { "robux": 5715, "bdt": 4000, "usd": 33, "gamepass": "https://www.roblox.com/game-pass/2060261327/5715", "video": "" },
+    "Rowboat System":       { "robux": 1143, "bdt": 800, "usd": 7, "gamepass": "https://www.roblox.com/game-pass/2057567344/1143", "video": "" },
+    "Kite Fighting System": { "robux": 1429, "bdt": 1000, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057423342/1429", "video": "" },
+    "Donation System":      { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2058023335/4286", "video": "" },
+    "Halloween Tools Pack": { "robux": 1400, "bdt": 980, "usd": 8, "gamepass": "https://www.roblox.com/game-pass/2057447363/1400", "video": "" },
+    "Partner System":       { "robux": 1715, "bdt": 1200, "usd": 10, "gamepass": "https://www.roblox.com/game-pass/2060656564/1715", "video": "" },
+    "Profile System":       { "robux": 4286, "bdt": 3000, "usd": 25, "gamepass": "https://www.roblox.com/game-pass/2057621402/4286", "video": "" },
+    "Concert Stage System": { "robux": 8572, "bdt": 6000, "usd": 50, "gamepass": "https://www.roblox.com/game-pass/2058263389/8572", "video": "" }
   }
 }
 </script>
@@ -2436,6 +2470,46 @@ document.querySelectorAll('.spot').forEach(function(card){
   // ---- shop: prices, payment instructions and "Order now" buttons ----
   const shop = JSON.parse(document.getElementById('shopData').textContent);
   const fmt = function(n){ return Number(n).toLocaleString('en-US'); };
+
+  // ---- "Preview" buttons: play a system's YouTube video in a pop-up ----
+  // accepts youtube.com/watch?v=, youtu.be/, /shorts/ and /embed/ links
+  function youtubeId(url){
+    const m = String(url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+  const videoModal = document.getElementById('videoModal');
+  const videoFrame = document.getElementById('videoFrame');
+  function openVideo(name, id){
+    document.getElementById('videoTitle').textContent = name + ' preview';
+    document.getElementById('videoYouTube').href = 'https://www.youtube.com/watch?v=' + id;
+    videoFrame.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0';
+    if (videoModal.showModal) videoModal.showModal(); else videoModal.setAttribute('open', '');
+  }
+  function closeVideo(){
+    // clearing the frame stops the video
+    videoFrame.src = 'about:blank';
+    if (videoModal.close) videoModal.close(); else videoModal.removeAttribute('open');
+  }
+  document.getElementById('videoClose').addEventListener('click', closeVideo);
+  videoModal.addEventListener('cancel', function(e){ e.preventDefault(); closeVideo(); });   // Esc key
+  videoModal.addEventListener('click', function(e){ if (e.target === videoModal) closeVideo(); });   // click outside the player
+  const playIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>';
+  document.querySelectorAll('.sys-cta[data-order]').forEach(function(cta){
+    const name = cta.dataset.order;
+    const id = youtubeId((shop.systems[name] || {}).video);
+    if (!id) return;
+    const actions = document.createElement('div');
+    actions.className = 'sys-actions';
+    cta.parentNode.insertBefore(actions, cta);
+    actions.appendChild(cta);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline sys-preview';
+    btn.innerHTML = playIcon + 'Preview';
+    btn.setAttribute('aria-label', 'Watch the ' + name + ' preview video');
+    btn.addEventListener('click', function(){ openVideo(name, id); });
+    actions.appendChild(btn);
+  });
 
   document.querySelectorAll('.sys-price[data-system]').forEach(function(el){
     const p = shop.systems[el.dataset.system];
