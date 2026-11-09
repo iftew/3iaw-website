@@ -432,6 +432,18 @@
       linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
       linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/24px 24px,
       radial-gradient(circle at 70% 30%, #2e2a3c, #131318 70%);}
+  .game-thumb.beach{background:
+      repeating-radial-gradient(ellipse 140% 50% at 50% 135%, transparent 0 16px, rgba(120,220,230,.08) 16px 18px),
+      radial-gradient(circle at 78% 22%, rgba(255,214,120,.45), transparent 32%),
+      linear-gradient(180deg, #1b3550 0%, #1d6f86 58%, #d9b77c 58.5%, #b8915a 100%);}
+  /* a game without pictures on Roblox yet shows its name until the live data brings real ones */
+  .game-thumb img[data-empty]{display:none;}
+  .thumb-title{
+    position:relative; z-index:1; padding:0 1.2rem; text-align:center;
+    font-family:var(--font-display); font-weight:800; font-size:1.55rem; line-height:1.1; color:var(--white);
+    text-shadow:0 3px 18px rgba(0,0,0,.45);
+  }
+  .game-thumb > img:not([data-empty]) ~ .thumb-title{display:none;}
   .game-thumb > img:first-child{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .5s var(--ease), filter .3s ease; filter:saturate(.9) brightness(.92);}
   .game:hover .game-thumb > img:first-child{transform:scale(1.05); filter:none;}
   .game-thumb.contain{background:#060607;}
@@ -1002,7 +1014,7 @@
         <span class="label">Built mainly in Roblox Studio</span>
       </div>
       <div class="stat-block">
-        <span class="num">8</span>
+        <span class="num">9</span>
         <span class="label">Roblox games built or worked on</span>
       </div>
       <div class="stat-block">
@@ -1121,7 +1133,7 @@
     </a>
   </div>
 
-  <h3 class="group-title reveal"><span class="group-dot"></span>Worked on as a developer <span class="group-count">5</span></h3>
+  <h3 class="group-title reveal"><span class="group-dot"></span>Worked on as a developer <span class="group-count">6</span></h3>
   <div class="game-grid">
     <a class="game spot reveal" data-game="9195047050" href="https://www.roblox.com/games/134757873036097/Bangali-Hood" target="_blank" rel="noopener">
       <div class="game-thumb">
@@ -1215,6 +1227,26 @@
           <span data-universe="10294847053" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>58K+ visits</span>
           <span data-universe="10294847053" data-stat="favorites"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z" fill="currentColor"/></svg>460+ favorites</span>
           <span class="game-play">Play on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+    </a>
+    <a class="game spot reveal" data-game="10775372359" href="https://www.roblox.com/games/116982119110039/Bangla-Beach-Hangout" target="_blank" rel="noopener">
+      <div class="game-thumb beach">
+        <!-- no pictures on Roblox yet: the name shows until the live data brings a real thumbnail and icon -->
+        <img data-empty alt="Bangla Beach Hangout on Roblox" loading="lazy">
+        <span class="thumb-title">Bangla Beach Hangout</span>
+        <span class="game-badge"><span class="badge-dot"></span>Coming soon</span><img class="game-icon" data-empty alt="" loading="lazy">
+      </div>
+      <div class="game-body">
+        <div class="proj-top">
+          <span class="proj-tag">Developer</span>
+          <span class="proj-num">09</span>
+        </div>
+        <h3>Bangla Beach Hangout</h3>
+        <p>A tropical beach hangout to relax by the ocean, dance to music, take pictures and meet new friends.</p>
+        <div class="game-meta">
+          <span data-universe="10775372359" data-stat="visits"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>30+ visits</span>
+          <span class="game-play">View on Roblox <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </div>
     </a>
@@ -1962,7 +1994,7 @@ document.body.classList.remove('no-js');
   function swapImg(img, url){
     if (!img || !url || img.src === url) return;
     const probe = new Image();
-    probe.onload = function(){ img.src = url; };
+    probe.onload = function(){ img.src = url; img.removeAttribute('data-empty'); };
     probe.src = url;
   }
   function updateCard(card, g){

@@ -17,7 +17,11 @@ const UNIVERSES = [
   10771061328, // Lumina Hangout
   10770998037, // Bengali Society
   10294847053, // Mystic Hangout
+  10775372359, // Bangla Beach Hangout (place 116982119110039)
 ];
+
+// Roblox's grey stand-in for games without pictures has GameMediaItem / GameIcon in its URL instead of Image
+const isPlaceholder = (url) => /\/(GameMediaItem|GameIcon)\d*\//.test(url);
 
 const [previousPath, outPath] = process.argv.slice(2);
 
@@ -46,15 +50,18 @@ try { previous = JSON.parse(await readFile(previousPath, 'utf8')).games || {}; }
 const thumbOf = {};
 for (const t of thumbs) {
   const first = (t.thumbnails || [])[0];
-  if (first && first.state === 'Completed') thumbOf[t.universeId] = first.imageUrl;
+  if (first && first.state === 'Completed' && !isPlaceholder(first.imageUrl)) thumbOf[t.universeId] = first.imageUrl;
 }
 const iconOf = {};
-for (const i of icons) if (i.state === 'Completed') iconOf[i.targetId] = i.imageUrl;
+for (const i of icons) if (i.state === 'Completed' && !isPlaceholder(i.imageUrl)) iconOf[i.targetId] = i.imageUrl;
 
 const games = {};
 let totalVisits = 0;
 for (const g of data) {
   const old = previous[g.id] || {};
+  // a placeholder saved by an older run isn't worth keeping
+  if (old.thumbnail && isPlaceholder(old.thumbnail)) old.thumbnail = null;
+  if (old.icon && isPlaceholder(old.icon)) old.icon = null;
   games[g.id] = {
     name: g.name, visits: g.visits, favorites: g.favoritedCount,
     thumbnail: thumbOf[g.id] || old.thumbnail || null,
