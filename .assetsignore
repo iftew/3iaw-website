@@ -10,3 +10,4 @@ bun.lock
 package-lock.json
 .github
 scripts
+youtube
