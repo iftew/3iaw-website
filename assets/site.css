@@ -118,6 +118,8 @@ header{
   transition: padding .25s var(--ease), background .25s ease, border-color .25s ease;
 }
 header.scrolled{padding:12px 6vw; background:rgba(10,10,12,0.85); border-bottom-color:var(--line-soft);}
+.brand img{width:38px; height:38px; border-radius:10px; box-shadow:0 0 0 1px var(--line), 0 6px 20px rgba(0,0,0,.5); transition:transform .2s var(--ease), box-shadow .2s ease;}
+.brand:hover img{transform:translateY(-1px) rotate(-4deg); box-shadow:0 0 0 1px rgba(103,232,249,.5), 0 8px 26px rgba(34,211,238,.25);}
 .brand{
   display:flex; align-items:center; gap:10px;
   font-family:var(--font-display); font-weight:700; font-size:1.15rem; letter-spacing:-.02em; white-space:nowrap;
