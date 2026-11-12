@@ -122,8 +122,6 @@ $extraHead
 <body class="subpage">
 <header id="siteHeader">
   <div class="brand-wrap">
-    <a href="/" class="brand" aria-label="3Iaw home"><img src="/assets/icon-192.png" alt="3Iaw" width="38" height="38"></a>
-    <button class="sound-toggle" id="soundToggle" type="button" aria-label="Turn click sounds off" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path class="sw" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path class="sx" d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>
   </div>
   <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav"><span></span></button>
   <nav id="siteNav" aria-label="Main">
@@ -300,7 +298,7 @@ $pages += @{ Path = '/games'; Priority = '0.8' }
 Save 'games.html' (Page '/games' 'Roblox Games by 3Iaw: Bangali Hood, Bangla Town & More' 'Roblox games by 3Iaw: Bangali Era, Ondhokar, CTG CITY and Bangla Beach Hangout, plus developer work on Bangali Hood, Bangla Town, Mystic Hangout and more.' '/games' $body '' '')
 
 # ---------- sitemap ----------
-$ugcImages = ([regex]::Matches($ugcGrid, 'href="(assets/ugc/[^"]+\.png)"') | ForEach-Object { "    <image:image><image:loc>$site/$($_.Groups[1].Value)</image:loc></image:image>" }) -join "`n"
+$ugcImages = ([regex]::Matches($ugcGrid, 'src="(assets/ugc/[^"]+\.png)"') | ForEach-Object { "    <image:image><image:loc>$site/$($_.Groups[1].Value)</image:loc></image:image>" }) -join "`n"
 $urls = @("  <url>`n    <loc>$site/</loc>`n    <lastmod>$today</lastmod>`n    <changefreq>weekly</changefreq>`n    <priority>1.0</priority>`n    <image:image><image:loc>$site/assets/og-image.png</image:loc></image:image>`n  </url>")
 foreach ($pg in $pages) {
   $img = if ($pg.Path -eq '/ugc') { "`n" + $ugcImages } else { '' }

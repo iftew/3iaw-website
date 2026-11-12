@@ -1,10 +1,5 @@
-// Soft click sound on links, buttons and tabs, made with the Web Audio API (no sound files).
-// The speaker button in the header turns it off and on; the choice is remembered on this device.
+// Sci-fi click sound on links, buttons and tabs, made with the Web Audio API (no sound files).
 (function(){
-  const KEY = '3iaw-sound';
-  const btn = document.getElementById('soundToggle');
-  let on = true;
-  try { on = localStorage.getItem(KEY) !== 'off'; } catch (e) {}
   let ctx = null;
 
   function audio(){
@@ -17,55 +12,58 @@
     return ctx;
   }
 
-  // a short glassy "tick": a quick pitch drop plus a tiny bright overtone
-  function click(pitch){
+  // a short two-step digital chirp with a fast warble, like a ship console button
+  function blip(pitch){
     const a = audio();
     if (!a) return;
     const t = a.currentTime;
+
     const out = a.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(0.11, t + 0.004);
-    out.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-    out.connect(a.destination);
+    out.gain.exponentialRampToValueAtTime(0.09, t + 0.005);
+    out.gain.setValueAtTime(0.09, t + 0.045);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
 
-    const body = a.createOscillator();
-    body.type = 'triangle';
-    body.frequency.setValueAtTime(1150 * pitch, t);
-    body.frequency.exponentialRampToValueAtTime(420 * pitch, t + 0.07);
-    body.connect(out);
+    const filter = a.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(4200, t);
+    filter.Q.value = 6;
+    filter.connect(out).connect(a.destination);
 
-    const shine = a.createOscillator();
-    const shineGain = a.createGain();
-    shine.type = 'sine';
-    shine.frequency.setValueAtTime(3200 * pitch, t);
-    shineGain.gain.setValueAtTime(0.25, t);
-    shineGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-    shine.connect(shineGain).connect(out);
+    // main voice: jumps up a fifth halfway, then glides higher
+    const voice = a.createOscillator();
+    voice.type = 'square';
+    voice.frequency.setValueAtTime(880 * pitch, t);
+    voice.frequency.setValueAtTime(1320 * pitch, t + 0.035);
+    voice.frequency.exponentialRampToValueAtTime(1980 * pitch, t + 0.13);
+    const voiceGain = a.createGain();
+    voiceGain.gain.value = 0.35;
+    voice.connect(voiceGain).connect(filter);
 
-    body.start(t); shine.start(t);
-    body.stop(t + 0.1); shine.stop(t + 0.04);
+    // warble: a fast vibrato for the "computer" feel
+    const lfo = a.createOscillator();
+    const depth = a.createGain();
+    lfo.frequency.value = 55;
+    depth.gain.value = 60 * pitch;
+    lfo.connect(depth).connect(voice.frequency);
+
+    // shimmer: a quiet high sine an octave up
+    const shimmer = a.createOscillator();
+    shimmer.type = 'sine';
+    shimmer.frequency.setValueAtTime(2640 * pitch, t);
+    shimmer.frequency.exponentialRampToValueAtTime(3960 * pitch, t + 0.1);
+    const shimmerGain = a.createGain();
+    shimmerGain.gain.value = 0.5;
+    shimmer.connect(shimmerGain).connect(filter);
+
+    [voice, lfo, shimmer].forEach(function(o){ o.start(t); o.stop(t + 0.15); });
   }
-
-  function paint(){
-    if (!btn) return;
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.setAttribute('aria-label', on ? 'Turn click sounds off' : 'Turn click sounds on');
-    btn.classList.toggle('muted', !on);
-  }
-  paint();
-
-  if (btn) btn.addEventListener('click', function(){
-    on = !on;
-    try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
-    paint();
-    if (on) click(1.25);
-  });
 
   document.addEventListener('pointerdown', function(e){
-    if (!on || e.button > 0) return;
+    if (e.button > 0) return;
     const el = e.target.closest('a, button, [role="tab"], summary, label, select, .btn');
-    if (!el || el === btn || el.disabled) return;
-    // main buttons get a slightly deeper click than links
-    click(el.matches('.btn, button, [role="tab"]') ? 0.85 : 1);
+    if (!el || el.disabled) return;
+    // main buttons get a slightly deeper chirp than links
+    blip(el.matches('.btn, button, [role="tab"]') ? 0.8 : 1);
   }, { passive: true });
 })();

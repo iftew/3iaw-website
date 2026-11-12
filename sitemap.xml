@@ -73,11 +73,12 @@
     <lastmod>2026-11-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <image:image><image:loc>https://3iaw.com/assets/ugc/gamcha.png</image:loc></image:image>
-    <image:image><image:loc>https://3iaw.com/assets/ugc/head-wrap.png</image:loc></image:image>
-    <image:image><image:loc>https://3iaw.com/assets/ugc/bucket-hat.png</image:loc></image:image>
-    <image:image><image:loc>https://3iaw.com/assets/ugc/backpack.png</image:loc></image:image>
-    <image:image><image:loc>https://3iaw.com/assets/ugc/gothic-tiara.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/bucket-hat-knavery.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/cat-devil-bucket-hat.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/backpack-knavery.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/cat-mask-beanie.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/gamcha-head-wrap.png</image:loc></image:image>
+    <image:image><image:loc>https://3iaw.com/assets/ugc/items/bangla-gamcha.png</image:loc></image:image>
   </url>
   <url>
     <loc>https://3iaw.com/games</loc>
