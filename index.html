@@ -63,7 +63,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body class="no-js">
@@ -115,7 +115,7 @@
   <div class="hero-copy">
     <div class="status-pill reveal"><span class="status-dot"></span>Systems available now · Open for perm dev</div>
     <div class="kicker reveal">Developer, <b>raised on Roblox Studio</b></div>
-    <h1 class="name-mark reveal">3Iaw<small><span id="typed" class="typed">Luau scripter</span></small></h1>
+    <h1 class="name-mark reveal"><span class="hi">Hi, I&rsquo;m</span> <span class="nm">3Iaw.</span><small><span id="typed" class="typed">Luau scripter</span></small></h1>
     <p class="hero-sub reveal">I build things, on the baseplate and off it. Gameplay systems, UI and tools, from Roblox Studio scripts to everything built around them.</p>
     <div class="hero-cta reveal">
       <a href="#projects" class="btn btn-solid">See the work
@@ -123,6 +123,12 @@
       </a>
       <a href="#services" class="btn btn-outline">Systems &amp; services</a>
     </div>
+    <dl class="hero-stats reveal">
+      <div><dt>Contributed to &middot; total visits</dt><dd data-stat="total-visits-exact">1,900,000+</dd></div>
+      <div><dt>Favourites</dt><dd class="hs-accent" data-stat="total-favorites">3.3K+</dd></div>
+      <div><dt>Games shipped</dt><dd>9</dd></div>
+      <div><dt>Systems for sale</dt><dd>9</dd></div>
+    </dl>
   </div>
   <a href="#about" class="scroll-hint" aria-label="Scroll to About"></a>
 </section>
@@ -130,7 +136,7 @@
 <section id="about" class="grid-bg">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">01 · About</span>
+      <span class="eyebrow"><b>01</b> / About</span>
       <h2>Scripting since the first baseplate.</h2>
     </div>
     <p>Where the habit started, and where it's headed.</p>
@@ -164,7 +170,7 @@
 <section id="skills">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">02 · Skills</span>
+      <span class="eyebrow"><b>02</b> / Skills</span>
       <h2>What I work with.</h2>
     </div>
     <p>The toolkit behind the builds.</p>
@@ -203,7 +209,7 @@
 <section id="projects" class="grid-bg">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">03 · Work</span>
+      <span class="eyebrow"><b>03</b> / Work</span>
       <h2>Things I build.</h2>
     </div>
     <p>Recent Roblox projects: games I made myself, and games I've worked on as a developer.</p>
@@ -393,7 +399,7 @@
 <section id="services" class="grid-bg">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">04 · Services</span>
+      <span class="eyebrow"><b>04</b> / Services</span>
       <h2>Systems, UGC &amp; perm dev.</h2>
     </div>
     <p>Ready made systems you can drop into your game, custom UGC items, or me on your team as a permanent developer.</p>
@@ -678,7 +684,7 @@
 <section id="shop">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">05 · Order &amp; reviews</span>
+      <span class="eyebrow"><b>05</b> / Order &amp; reviews</span>
       <h2>Order, then review.</h2>
     </div>
     <p>Place an order, read what other buyers say, or review something you bought.</p>
@@ -834,7 +840,7 @@
 <section id="achievements">
   <div class="section-head reveal">
     <div>
-      <span class="eyebrow">06 · Journey</span>
+      <span class="eyebrow"><b>06</b> / Journey</span>
       <h2>How it's going.</h2>
     </div>
     <p>A short timeline, growing as things happen.</p>
@@ -870,7 +876,7 @@
 <section class="contact" id="contact">
   <div class="contact-card reveal">
     <div>
-      <span class="eyebrow">07 · Contact</span>
+      <span class="eyebrow"><b>07</b> / Contact</span>
       <h2>Let's build something.</h2>
       <p>Want one of my systems, a custom build, or a perm dev for your game? Send a message below, DM me on Discord, or email me.</p>
     </div>
@@ -1169,6 +1175,16 @@ document.body.classList.remove('no-js');
     const node = el.lastChild;
     if (node && node.nodeType === 3) node.nodeValue = text; else el.textContent = text;
   }
+  // the exact visit total ticks up to its value, like an odometer
+  function countUp(el, target){
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const start = performance.now(), from = Math.floor(target * 0.97), ms = reduce ? 0 : 1400;
+    (function step(now){
+      const t = ms ? Math.min(1, (now - start) / ms) : 1;
+      el.textContent = Math.round(from + (target - from) * (1 - Math.pow(1 - t, 3))).toLocaleString('en-US');
+      if (t < 1) requestAnimationFrame(step);
+    })(start);
+  }
   fetch('/api/roblox-stats')
     .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(d){
@@ -1180,6 +1196,13 @@ document.body.classList.remove('no-js');
       els.forEach(function(el){
         const stat = el.getAttribute('data-stat');
         if (stat === 'total-visits') { if (d.totalVisits > 0) setText(el, fmt(d.totalVisits, 0)); return; }
+        if (stat === 'total-visits-exact') { if (d.totalVisits > 0) countUp(el, d.totalVisits); return; }
+        if (stat === 'total-favorites') {
+          let favs = 0;
+          Object.keys(d.games).forEach(function(k){ favs += d.games[k].favorites || 0; });
+          if (favs > 0) setText(el, fmt(favs, 100));
+          return;
+        }
         const g = d.games[el.getAttribute('data-universe')];
         if (!g) return;
         if (stat === 'visits') setText(el, fmt(g.visits, 0) + ' visits');
