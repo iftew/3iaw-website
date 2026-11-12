@@ -498,11 +498,30 @@ section:not(.hero){background-color:rgba(10,10,12,.72);}
 .game-play{margin-left:auto; color:var(--white); font-weight:600;}
 .game:hover .game-play{text-decoration:underline; text-underline-offset:3px;}
 .games-note{margin:1.6rem 0 0; font-size:.78rem; color:var(--grey-dim);}
+
+/* compact game cards: just the game icon, no cover picture */
+.game{position:relative; flex-direction:row; align-items:flex-start; gap:1rem; padding:1.1rem 1.2rem 1.15rem;}
+.game:hover{transform:translateY(-2px);}
+.game-thumb{
+  aspect-ratio:auto; width:56px; height:56px; flex:none; position:static;
+  border:1px solid var(--line); border-radius:13px;
+}
+.game-thumb::after, .game-thumb .thumb-title{display:none;}
+.game-thumb > img:first-child{display:none;}
+.game-thumb.contain > img:first-child{display:block; position:static; width:100%; height:100%; padding:0; object-fit:cover; filter:none; transform:none;}
+.game-thumb .game-icon{position:static; width:100%; height:100%; border:0; border-radius:0; box-shadow:none;}
+.game-thumb .game-icon[data-empty]{display:none;}
+.game-grid .game .game-thumb .game-badge{top:1rem; right:1rem; font-size:.62rem; padding:.32rem .55rem .32rem .48rem;}
+.game:has(.game-badge) .proj-num{display:none;}
+.game:has(.game-badge) .proj-top{padding-right:7.6rem; min-height:1.6rem;}
+.game-grid{grid-template-columns:repeat(auto-fill, minmax(min(100%, 340px), 1fr));}
+.game .game-body{padding:0; flex:1; min-width:0;}
+.game .game-body h3{font-size:1.12rem; margin:.55rem 0 .2rem;}
+.game-body p{font-size:.84rem; line-height:1.5;}
+.game-meta{margin-top:.75rem; font-size:.76rem;}
 .game-body{padding:1.3rem 1.4rem 1.5rem;}
 .game-body h3{font-family:var(--font-display); font-weight:600; color:var(--white); font-size:1.3rem; margin:.8rem 0 .3rem;}
 .game-body p{color:var(--grey-dim); font-size:.9rem; margin:0;}
-@media (max-width:900px){ .game-grid{grid-template-columns:1fr 1fr;} }
-@media (max-width:560px){ .game-grid{grid-template-columns:1fr;} }
 
 /* ---------- services ---------- */
 .offer-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin-bottom:3rem;}
