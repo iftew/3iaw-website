@@ -241,9 +241,18 @@ nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
 .hero-stats dt{font-family:var(--font-mono); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--grey-dim); margin-bottom:.35rem;}
 .hero-stats dd{margin:0; font-family:var(--font-mono); font-size:clamp(1.4rem, 2.6vw, 2.1rem); color:var(--white); font-variant-numeric:tabular-nums; letter-spacing:-.02em;}
 .hero-stats dd.hs-accent{color:#a594ff;}
+.hero-stats dd.hs-live{color:#4ade80;}
+.hero-stats [hidden]{display:none;}
+.live-dot{display:inline-block; width:6px; height:6px; margin:0 .4rem .08rem 0; border-radius:50%; background:#4ade80; box-shadow:0 0 0 0 rgba(74,222,128,.6); animation:livepulse 1.8s infinite;}
+@keyframes livepulse{70%{box-shadow:0 0 0 6px rgba(74,222,128,0);} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0);}}
+@media (min-width:901px){
+  .hero-stats{grid-template-columns:repeat(5, auto);}
+  .hero-stats > div{padding-right:1.5rem; margin-right:1.5rem;}
+}
 @media (max-width:900px){
   .hero-stats{grid-template-columns:1fr 1fr; gap:1.2rem 0;}
-  .hero-stats > div:nth-child(2n){border-right:0; margin-right:0;}
+  .hero-stats > div{border-right:0; margin-right:0;}
+  .hero-stats > div:first-child{grid-column:1 / -1;}
 }
 .name-mark small{ margin-left:.04em;
   display:block; margin-top:0.7rem;

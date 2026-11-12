@@ -125,7 +125,8 @@
     </div>
     <dl class="hero-stats reveal">
       <div><dt>Contributed to &middot; total visits</dt><dd data-stat="total-visits-exact">1,900,000+</dd></div>
-      <div><dt>Favourites</dt><dd class="hs-accent" data-stat="total-favorites">3.3K+</dd></div>
+      <div hidden><dt><span class="live-dot"></span>Playing now</dt><dd class="hs-live" data-stat="total-playing">0</dd></div>
+      <div><dt>Favourites</dt><dd class="hs-accent" data-stat="total-favorites">3,300+</dd></div>
       <div><dt>Games shipped</dt><dd>9</dd></div>
       <div><dt>Systems for sale</dt><dd>9</dd></div>
     </dl>
@@ -1175,43 +1176,57 @@ document.body.classList.remove('no-js');
     const node = el.lastChild;
     if (node && node.nodeType === 3) node.nodeValue = text; else el.textContent = text;
   }
-  // the exact visit total ticks up to its value, like an odometer
-  function countUp(el, target){
-    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const start = performance.now(), from = Math.floor(target * 0.97), ms = reduce ? 0 : 1400;
+  // exact numbers tick from what's shown to the new value, like an odometer
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function countTo(el, target){
+    const shown = parseInt(el.textContent.replace(/\D/g, ''), 10);
+    const from = el.dataset.ticked && !isNaN(shown) ? shown : Math.floor(target * 0.97);
+    el.dataset.ticked = '1';
+    if (from === target) { el.textContent = target.toLocaleString('en-US'); return; }
+    const start = performance.now(), ms = reduce ? 0 : 1400;
     (function step(now){
       const t = ms ? Math.min(1, (now - start) / ms) : 1;
       el.textContent = Math.round(from + (target - from) * (1 - Math.pow(1 - t, 3))).toLocaleString('en-US');
       if (t < 1) requestAnimationFrame(step);
     })(start);
   }
-  fetch('/api/roblox-stats')
-    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function(d){
-      if (!d.games) return;
-      cards.forEach(function(card){
-        const g = d.games[card.getAttribute('data-game')];
-        if (g) updateCard(card, g);
-      });
-      els.forEach(function(el){
-        const stat = el.getAttribute('data-stat');
-        if (stat === 'total-visits') { if (d.totalVisits > 0) setText(el, fmt(d.totalVisits, 0)); return; }
-        if (stat === 'total-visits-exact') { if (d.totalVisits > 0) countUp(el, d.totalVisits); return; }
-        if (stat === 'total-favorites') {
-          let favs = 0;
-          Object.keys(d.games).forEach(function(k){ favs += d.games[k].favorites || 0; });
-          if (favs > 0) setText(el, fmt(favs, 100));
-          return;
-        }
-        const g = d.games[el.getAttribute('data-universe')];
-        if (!g) return;
-        if (stat === 'visits') setText(el, fmt(g.visits, 0) + ' visits');
-        if (stat === 'favorites') setText(el, fmt(g.favorites, 100) + ' favorites');
-      });
-      const note = document.getElementById('statsNote');
-      if (note) note.textContent = 'Visit counts update live from Roblox.';
-    })
-    .catch(function(){});                            // function down: keep the numbers written in the page
+  function load(){
+    fetch('/api/roblox-stats', { cache: 'no-store' })
+      .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(d){
+        if (!d.games) return;
+        cards.forEach(function(card){
+          const g = d.games[card.getAttribute('data-game')];
+          if (g) updateCard(card, g);
+        });
+        els.forEach(function(el){
+          const stat = el.getAttribute('data-stat');
+          if (stat === 'total-visits') { if (d.totalVisits > 0) setText(el, fmt(d.totalVisits, 0)); return; }
+          if (stat === 'total-visits-exact') { if (d.totalVisits > 0) countTo(el, d.totalVisits); return; }
+          if (stat === 'total-favorites') {
+            let favs = 0;
+            Object.keys(d.games).forEach(function(k){ favs += d.games[k].favorites || 0; });
+            if (favs > 0) countTo(el, favs);
+            return;
+          }
+          if (stat === 'total-playing') {
+            // only when the numbers are live: an old count of players would be wrong
+            if (d.live) { el.closest('[hidden]') && el.closest('[hidden]').removeAttribute('hidden'); el.textContent = (d.totalPlaying || 0).toLocaleString('en-US'); }
+            return;
+          }
+          const g = d.games[el.getAttribute('data-universe')];
+          if (!g) return;
+          if (stat === 'visits') setText(el, fmt(g.visits, 0) + ' visits');
+          if (stat === 'favorites') setText(el, fmt(g.favorites, 100) + ' favorites');
+        });
+        const note = document.getElementById('statsNote');
+        if (note) note.textContent = d.live ? 'Visits and players update live from Roblox.' : 'Visit counts update automatically from Roblox.';
+      })
+      .catch(function(){});                          // function down: keep the numbers already shown
+  }
+  load();
+  // refresh every 30 seconds while the tab is open and visible
+  setInterval(function(){ if (!document.hidden) load(); }, 30000);
 })();
 
 // ---------- order & reviews tabs ----------

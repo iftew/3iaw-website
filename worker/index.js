@@ -90,12 +90,34 @@ async function notifyOwner(env, subject, lines, replyTo) {
 
 // ---------- live Roblox game info ----------
 
-// the GitHub job refreshes stats.json every 15 minutes; Cloudflare keeps a copy for 5 minutes
+// names and pictures come from stats.json (the GitHub job; Cloudflare keeps a copy for 5 minutes).
+// The numbers (visits, favorites, players online right now) are then swapped for live ones.
+// Roblox blocks Cloudflare's servers, so they come through the public RoProxy mirror, cached 15 seconds.
+const LIVE_URL = 'https://games.roproxy.com/v1/games?universeIds=';
+
 async function robloxStats() {
   try {
     const r = await fetch(STATS_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
     if (!r.ok) throw new Error('stats.json ' + r.status);
-    return Response.json(await r.json(), { headers: { 'Cache-Control': 'public, max-age=300' } });
+    const d = await r.json();
+    try {
+      const lr = await fetch(LIVE_URL + Object.keys(d.games).join(','), { cf: { cacheTtl: 15, cacheEverything: true } });
+      if (!lr.ok) throw new Error('live ' + lr.status);
+      const live = (await lr.json()).data || [];
+      let visits = 0, playing = 0, favorites = 0;
+      for (const g of live) {
+        const s = d.games[g.id];
+        if (!s) continue;
+        s.visits = g.visits; s.favorites = g.favoritedCount; s.playing = g.playing || 0;
+      }
+      for (const id in d.games) {
+        visits += d.games[id].visits || 0; favorites += d.games[id].favorites || 0; playing += d.games[id].playing || 0;
+      }
+      if (live.length) Object.assign(d, { totalVisits: visits, totalFavorites: favorites, totalPlaying: playing, live: true, updated: new Date().toISOString() });
+    } catch (e) {
+      console.error(e);                              // live numbers down: send stats.json as it is
+    }
+    return Response.json(d, { headers: { 'Cache-Control': 'public, max-age=15' } });
   } catch (e) {
     console.error(e);
     // the page keeps its built-in numbers when this fails
