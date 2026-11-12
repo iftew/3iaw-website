@@ -149,6 +149,15 @@ nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
 }
 .views svg{color:var(--grey-mid);}
 .views[hidden]{display:none;}
+.sound-toggle{
+  width:32px; height:32px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:999px; background:rgba(19,19,22,.6);
+  color:var(--grey-mid); cursor:pointer; transition:color .15s ease, border-color .15s ease;
+}
+.sound-toggle:hover{color:var(--white); border-color:var(--grey-dim);}
+.sound-toggle .sx{display:none;}
+.sound-toggle.muted .sw{display:none;}
+.sound-toggle.muted .sx{display:inline;}
 .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
 
 .nav-toggle{
