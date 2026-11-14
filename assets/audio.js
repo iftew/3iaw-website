@@ -132,6 +132,26 @@ function amplify(L, R, gainDb) {
   }
 }
 
+// smooth edges, so a cut never ends (or starts) with a click: a tiny fade-in, and a cosine fade-out
+// (longer when the audio was cut short, e.g. at Roblox's 7:00 limit)
+function fadeEdges(L, R, fadeOutSeconds) {
+  const len = L.length;
+  const inN = Math.min(Math.round(0.012 * RATE), len >> 3);
+  for (let i = 0; i < inN; i++) {
+    const g = Math.sin((i / inN) * Math.PI / 2);
+    L[i] *= g; R[i] *= g;
+  }
+  const outN = Math.min(Math.round(fadeOutSeconds * RATE), Math.floor(len * 0.15));
+  for (let i = 0; i < outN; i++) {
+    // goes from 1 to 0 along half a cosine, so it eases in and lands softly on silence
+    const g = 0.5 + 0.5 * Math.cos((i / (outN - 1 || 1)) * Math.PI);
+    const p = len - outN + i;
+    L[p] *= g; R[p] *= g;
+  }
+  // the very last samples are exactly zero, so the MP3 ends on silence
+  for (let i = Math.max(0, len - 32); i < len; i++) { L[i] = 0; R[i] = 0; }
+}
+
 async function encodeMp3(L, R, onProgress) {
   const lame = await loadLame();
   const enc = new lame.Mp3Encoder(2, RATE, KBPS);
@@ -164,6 +184,9 @@ async function convert(job, file) {
   let R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice(start, start + inLen);
   if (Math.abs(job.speed - 1) > 1e-3 || Math.abs(job.pitch) > 1e-3) [L, R] = await stretch(L, R, job, prog(0.1, 0.5));
   amplify(L, R, job.gain);
+  // cut before the song's own end (7:00 limit): a 3 s fade; otherwise a short 1.2 s one just to clean the tail
+  const cutShort = buf.length - start > maxIn;
+  fadeEdges(L, R, cutShort ? 3 : 1.2);
   const blob = await encodeMp3(L, R, prog(0.6, 0.4));
   if (blob.size > MAX_BYTES) throw new Error(`The MP3 is ${(blob.size / 1e6).toFixed(1)} MB; Roblox allows 20 MB.`);
   outputs.set(job.id, { blob, url: URL.createObjectURL(blob) });
