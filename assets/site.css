@@ -10,7 +10,7 @@
   --grey-mid:#a2a2aa;
   --grey-light:#d4d4d9;
   --white:#f5f5f7;
-  --accent:#b39dfb;
+  --accent:#e4e4e9;
   --discord:#8b95f5;
   --ok:#7fd1a4;
   --radius:14px;
@@ -761,7 +761,7 @@ section:not(.hero){background-color:rgba(10,10,12,.72);}
   border:1px solid var(--line); border-radius:20px;
   padding:clamp(1.8rem, 4vw, 3.2rem);
   background:
-    radial-gradient(600px circle at 0% 0%, rgba(167,139,250,.12), transparent 60%),
+    radial-gradient(600px circle at 0% 0%, rgba(255,255,255,.05), transparent 60%),
     var(--panel);
 }
 .contact h2{

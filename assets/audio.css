@@ -58,7 +58,7 @@
 .ac-badge.Approved{color:var(--ok); border-color:rgba(127,209,164,.4); background:rgba(127,209,164,.08);}
 .ac-badge.Reviewing{color:#f5c451; border-color:rgba(245,196,81,.4); background:rgba(245,196,81,.08);}
 .ac-badge.Rejected, .ac-badge.error{color:#f08a8a; border-color:rgba(240,138,138,.4); background:rgba(240,138,138,.08);}
-.ac-badge.ready{color:var(--accent); border-color:rgba(179,157,251,.4);}
+.ac-badge.ready{color:var(--accent); border-color:rgba(228,228,233,.35);}
 .ac-steps{display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.8rem;}
 .ac-step{font:.7rem var(--font-mono); padding:.2rem .5rem; border-radius:5px; border:1px solid var(--line-soft); color:var(--grey-dim);}
 .ac-step.done{color:var(--ok); border-color:rgba(127,209,164,.3);}
