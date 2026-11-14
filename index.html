@@ -1293,7 +1293,8 @@ document.body.classList.remove('no-js');
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        item: f['item'].value, rating: Number(f['rating'].value), text: f['text'].value,
+        // namedItem: f['item'] would be the collection's own item() function, not the select
+        item: f.namedItem('item').value, rating: Number(f['rating'].value), text: f['text'].value,
         orderId: f['orderId'].value, email: f['email'].value
       })
     }).then(function(res){
