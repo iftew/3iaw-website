@@ -1,0 +1,122 @@
+<!-- Body of /audio (Audio Converter). scripts/build-pages.ps1 wraps it in the site header and footer and writes audio.html.
+     The converter runs in the visitor's browser (assets/audio.js); Roblox calls go through the Worker (/api/roblox/*). -->
+<section class="page-top grid-bg">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">&rsaquo;</span> <span aria-current="page">Audio Converter</span></nav>
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Free tool</span>
+      <h1 class="page-title">Roblox Audio Converter</h1>
+    </div>
+    <p>Drop in an audio file, change its speed, pitch and volume, and upload it to your Roblox account. The audio is processed in your own browser: it's only sent to Roblox when you upload.</p>
+  </div>
+
+  <div class="ac-stats">
+    <div class="ac-stat"><b id="sTotal">0</b><span>Uploaded</span></div>
+    <div class="ac-stat"><b id="sOk" class="ok">0</b><span>Approved</span></div>
+    <div class="ac-stat"><b id="sRev" class="rev">0</b><span>Reviewing</span></div>
+    <div class="ac-stat"><b id="sBad" class="bad">0</b><span>Rejected</span></div>
+  </div>
+
+  <div class="ac-grid">
+    <form class="ac-card" id="acForm" novalidate>
+      <div class="ac-card-head">
+        <span>New conversion</span>
+        <button type="button" class="ac-link" id="openSettings"><span class="ac-dot" id="connDot"></span><span id="connText">Connect Roblox</span></button>
+      </div>
+
+      <div class="ac-drop" id="drop" tabindex="0" role="button" aria-label="Choose an audio file">
+        <b id="dropName">Drop an audio file here</b>
+        <span>or click to choose one &middot; MP3, WAV, OGG, M4A, FLAC or a video file</span>
+      </div>
+      <input type="file" id="fileIn" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm" hidden>
+
+      <div class="ac-label">Quick effects</div>
+      <div class="ac-chips" id="fx">
+        <button type="button" data-s="1" data-m="tempo" data-p="0">Normal</button>
+        <button type="button" data-s="1.5" data-m="tempo" data-p="0">Fast</button>
+        <button type="button" data-s="1.25" data-m="pitch" data-p="0">Sped up</button>
+        <button type="button" data-s="1.3" data-m="pitch" data-p="2">Nightcore</button>
+        <button type="button" data-s="0.85" data-m="pitch" data-p="0">Slowed</button>
+        <button type="button" data-s="1" data-m="tempo" data-p="-4">Deep voice</button>
+        <button type="button" data-s="1" data-m="tempo" data-p="5">Chipmunk</button>
+      </div>
+
+      <label class="ac-label" for="speed">Speed <em id="speedVal">1.00x</em></label>
+      <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
+      <div class="ac-chips small">
+        <button type="button" data-speed="0.8">0.8x</button><button type="button" data-speed="1">1x</button>
+        <button type="button" data-speed="1.25">1.25x</button><button type="button" data-speed="1.5">1.5x</button>
+        <button type="button" data-speed="2">2x</button><button type="button" data-speed="2.3">2.3x</button>
+      </div>
+      <div class="ac-seg" id="mode">
+        <button type="button" data-v="tempo" class="on">Keep pitch</button>
+        <button type="button" data-v="pitch">Pitch follows speed</button>
+      </div>
+
+      <label class="ac-label" for="pitch">Pitch <em id="pitchVal">0 st</em></label>
+      <input type="range" id="pitch" min="-12" max="12" step="0.5" value="0">
+      <div class="ac-chips small">
+        <button type="button" data-pv="-12">&minus;12</button><button type="button" data-pv="-5">&minus;5</button>
+        <button type="button" data-pv="-2">&minus;2</button><button type="button" data-pv="0">0</button>
+        <button type="button" data-pv="2">+2</button><button type="button" data-pv="5">+5</button>
+        <button type="button" data-pv="12">+12</button>
+      </div>
+
+      <label class="ac-label" for="gain">Amplify <em id="gainVal">+0 dB</em></label>
+      <input type="range" id="gain" min="-10" max="15" step="1" value="0">
+
+      <div class="field-row ac-row">
+        <label class="field"><span>Start at (seconds)</span><input type="number" id="trimStart" min="0" step="1" placeholder="0"></label>
+        <label class="field"><span>Name on Roblox</span><input type="text" id="assetName" maxlength="50" placeholder="from the file name"></label>
+      </div>
+
+      <label class="ac-check"><input type="checkbox" id="autoUpload" checked> Upload to Roblox when it's converted</label>
+      <button class="btn btn-solid ac-go" type="submit" id="goBtn">Convert &amp; upload</button>
+      <p class="form-status err" id="formErr" role="alert"></p>
+    </form>
+
+    <div>
+      <div class="ac-jobs-head">
+        <h2>Your audio</h2>
+        <div class="ac-filter" id="filter">
+          <button type="button" class="on" data-f="all">All</button><button type="button" data-f="Approved">Approved</button>
+          <button type="button" data-f="Reviewing">Reviewing</button><button type="button" data-f="failed">Failed</button>
+        </div>
+      </div>
+      <div id="jobs"></div>
+      <p class="ac-note">This list is saved in this browser only. Converted files stay until you close or reload the page, so download them if you want to keep them.</p>
+    </div>
+  </div>
+</section>
+
+<dialog class="ac-dialog" id="settings">
+  <form method="dialog" id="settingsForm">
+    <div class="ac-card-head"><span>Connect your Roblox account</span></div>
+    <div class="ac-dialog-body">
+      <p>Uploads use your own Roblox Open Cloud API key.</p>
+      <ol>
+        <li>Open <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com &rarr; Credentials</a> and create an API key.</li>
+        <li>Add the <b>Assets</b> API with <b>Read</b> and <b>Write</b>.</li>
+        <li>Under Accepted IP Addresses, add <code>0.0.0.0/0</code>. Uploads are sent from 3iaw.com's server, not your PC, so this is required.</li>
+        <li>Save, then copy the key and paste it below.</li>
+      </ol>
+      <label class="field"><span>API key <em id="keyHint"></em></span><input type="password" id="apiKey" placeholder="paste to set or replace" autocomplete="off"></label>
+      <div class="field-row ac-row">
+        <label class="field"><span>Upload as</span>
+          <select id="creatorType"><option value="user">My account</option><option value="group">A group</option></select></label>
+        <label class="field"><span id="creatorLbl">Username or user ID</span><input type="text" id="creatorId" placeholder="username, ID or profile link"></label>
+      </div>
+      <label class="ac-check"><input type="checkbox" id="remember" checked> Remember on this device</label>
+      <p class="ac-small">The key is kept in this browser and sent to Roblox (through 3iaw.com) only when you upload or check a status. 3iaw.com never stores it.</p>
+      <p class="form-status err" id="settingsErr" role="alert"></p>
+    </div>
+    <div class="ac-dialog-foot">
+      <button type="button" class="btn btn-outline" id="forgetKey">Forget key</button>
+      <span class="ac-spacer"></span>
+      <button type="button" class="btn btn-outline" id="cancelSettings">Cancel</button>
+      <button type="submit" class="btn btn-solid" id="saveSettings">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="ac-toast" id="toast" role="status" aria-live="polite"></div>

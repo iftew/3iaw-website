@@ -149,6 +149,17 @@ nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
 }
 .views svg{color:var(--grey-mid);}
 .views[hidden]{display:none;}
+/* top-left tab for the Audio Converter (/audio), next to the views counter */
+.tool-tab{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.25rem .7rem; border-radius:999px;
+  border:1px solid var(--line); background:rgba(19,19,22,.6);
+  font:500 .8rem var(--font-body); color:var(--grey-light); white-space:nowrap; text-decoration:none;
+  transition:border-color .15s ease, color .15s ease, background .15s ease;
+}
+.tool-tab svg{color:var(--accent);}
+.tool-tab:hover{border-color:var(--grey-mid); color:var(--white); background:var(--surface);}
+.tool-tab.active{border-color:var(--grey-mid); color:var(--white); background:var(--surface);}
 .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
 
 .nav-toggle{

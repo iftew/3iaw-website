@@ -8,6 +8,10 @@
 //   POST   /api/contact             send a message from the contact form; emails the owner
 //   GET    /api/orders              orders and messages (admin)
 //   POST   /api/orders              {orderId, paid} mark an order paid or undo it (admin)
+//   POST   /api/roblox/user         Audio Converter: username -> Roblox user ID
+//   POST   /api/roblox/upload       Audio Converter: upload an MP3 with the visitor's own Open Cloud key
+//   GET    /api/roblox/operation    Audio Converter: is the upload done, and its asset ID
+//   GET    /api/roblox/asset        Audio Converter: moderation status of an uploaded asset
 //
 // How a purchase is confirmed for a review: the order ID and email must match an order placed here, and
 // the owner must have pressed "Confirm payment" for it in reviews-admin.html. That covers Robux buyers too:
@@ -303,9 +307,99 @@ async function orders(req, env) {
   return json({ error: 'Method not allowed.' }, 405);
 }
 
+// ---------- Audio Converter (/audio): Roblox Open Cloud calls for the visitor ----------
+// Browsers can't call apis.roblox.com directly (no CORS), so the page sends its calls here and they are
+// passed on unchanged. The visitor's own API key comes in the X-Roblox-Key header; it is never stored or logged.
+// Only these fixed Roblox endpoints can be reached, and only from pages on this site.
+
+const ROBLOX_ASSETS = 'https://apis.roblox.com/assets/v1';
+const MAX_UPLOAD = 21 * 1024 * 1024; // Roblox's audio limit is 20 MB, plus room for the form
+
+async function robloxPassOn(url, init) {
+  let res;
+  try { res = await fetch(url, init); } catch { return json({ error: "Couldn't reach Roblox. Try again." }, 502); }
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch { body = { message: text.slice(0, 300) }; }
+  if (res.ok) return json(body);
+  // turn Roblox's error shapes into one readable message
+  const msg = body.message || (Array.isArray(body.errors) && body.errors.map((e) => e.message).join(' ')) ||
+    (Array.isArray(body) && body.map((e) => e.message).join(' ')) || 'Request failed.';
+  const hint = res.status === 401 ? ' Check the API key in Connect Roblox.'
+    : res.status === 403 ? ' Make sure the key has Assets Read and Write, and 0.0.0.0/0 under Accepted IP Addresses.'
+    : res.status === 429 ? ' Roblox is limiting uploads right now (or your monthly audio quota is used up).' : '';
+  const text = String(msg).trim().replace(/([^.!?])$/, '$1.');
+  return json({ error: `Roblox ${res.status}: ${text}${hint}` }, res.status >= 500 ? 502 : res.status);
+}
+
+async function robloxAudio(req, path) {
+  // fetch() from this site's pages sends Sec-Fetch-Site: same-origin; this keeps other sites from using the relay
+  if (req.headers.get('sec-fetch-site') !== 'same-origin') return json({ error: 'Not allowed.' }, 403);
+  const url = new URL(req.url);
+
+  if (path === '/api/roblox/user') {
+    if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+    let body;
+    try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+    const username = String(body.username || '').trim();
+    if (!/^\w{3,20}$/.test(username)) return json({ error: "That doesn't look like a Roblox username." }, 400);
+    // public lookup, no key involved; Roblox often answers Cloudflare with 429, so roproxy (as for the live stats) is the fallback
+    let data = null;
+    for (const host of ['users.roblox.com', 'users.roproxy.com']) {
+      try {
+        const res = await fetch(`https://${host}/v1/usernames/users`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
+        });
+        if (res.ok) { data = (await res.json()).data || []; break; }
+      } catch { /* try the next host */ }
+    }
+    if (!data) return json({ error: "Couldn't look up that username. Enter your user ID instead." }, 502);
+    if (!data.length) return json({ error: `No Roblox user named "${username}".` }, 404);
+    return json({ id: data[0].id, name: data[0].name });
+  }
+
+  const key = (req.headers.get('x-roblox-key') || '').trim();
+  if (!key || key.length > 4000) return json({ error: 'Connect your Roblox account first.' }, 401);
+  const auth = { 'x-api-key': key };
+
+  if (path === '/api/roblox/upload') {
+    if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+    const type = req.headers.get('content-type') || '';
+    if (!type.startsWith('multipart/form-data')) return json({ error: 'Bad request.' }, 400);
+    if (Number(req.headers.get('content-length') || 0) > MAX_UPLOAD) return json({ error: 'The file is over 20 MB.' }, 413);
+    // only an Audio asset with an MP3 file goes through
+    let form;
+    try { form = await req.formData(); } catch { return json({ error: 'Bad request.' }, 400); }
+    const file = form.get('fileContent');
+    let meta;
+    try { meta = JSON.parse(String(form.get('request') || '')); } catch { return json({ error: 'Bad request.' }, 400); }
+    if (!(file instanceof File) || file.size > MAX_UPLOAD || meta.assetType !== 'Audio') return json({ error: 'Bad request.' }, 400);
+    const out = new FormData();
+    out.append('request', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    out.append('fileContent', new File([file], 'audio.mp3', { type: 'audio/mpeg' }));
+    return robloxPassOn(ROBLOX_ASSETS + '/assets', { method: 'POST', headers: auth, body: out });
+  }
+  if (path === '/api/roblox/operation') {
+    const id = url.searchParams.get('id') || '';
+    if (!/^[\w-]{1,100}$/.test(id)) return json({ error: 'Bad operation ID.' }, 400);
+    return robloxPassOn(ROBLOX_ASSETS + '/operations/' + id, { headers: auth });
+  }
+  if (path === '/api/roblox/asset') {
+    const id = url.searchParams.get('id') || '';
+    if (!/^\d{1,20}$/.test(id)) return json({ error: 'Bad asset ID.' }, 400);
+    const res = await robloxPassOn(`${ROBLOX_ASSETS}/assets/${id}?readMask=moderationResult`, { headers: auth });
+    if (!res.ok) return res;
+    const body = await res.json();
+    return json({ assetId: id, moderationState: (body.moderationResult || {}).moderationState || 'Reviewing' });
+  }
+  return json({ error: 'Not found.' }, 404);
+}
+
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname;
+    if (path.startsWith('/api/roblox/')) return robloxAudio(req, path);
     if (path === '/api/roblox-stats') return robloxStats();
     if (path === '/api/reviews') return reviews(req, env);
     if (path === '/api/order') return placeOrder(req, env);

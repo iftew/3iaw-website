@@ -1,0 +1,428 @@
+// Audio Converter (/audio). Everything runs in the visitor's browser:
+//   decode (Web Audio, 44.1 kHz) -> speed / pitch (SoundTouch) -> amplify + limiter -> MP3 (LAME)
+// Roblox calls go through the Worker (/api/roblox/*) because Roblox doesn't allow them from browsers.
+// The visitor's API key stays in this browser and is sent only with those calls; the Worker doesn't store it.
+import { SoundTouch, SimpleFilter } from 'https://cdn.jsdelivr.net/npm/soundtouchjs@0.3.0/dist/soundtouch.js';
+
+const LAME_URL = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
+const RATE = 44100;
+const MAX_SECONDS = 7 * 60;          // Roblox audio length limit
+const MAX_BYTES = 20 * 1024 * 1024;  // Roblox audio file size limit
+const KBPS = 192;
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pause = () => new Promise((r) => setTimeout(r, 0));
+
+// ---------- storage (every access can throw in private mode) ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+let sessionKey = store.get('ac.key', '');
+let cfg = store.get('ac.cfg', { creatorType: 'user', creatorId: '' });
+let jobs = store.get('ac.jobs', []);
+const outputs = new Map(); // job id -> { blob, url } (memory only)
+// a conversion can't survive a reload, since the file was only in memory
+jobs.forEach((j) => { if (['convert', 'upload'].includes(j.stage)) Object.assign(j, { stage: 'error', failedStage: j.stage, error: 'Interrupted by a page reload.' }); });
+const saveJobs = () => store.set('ac.jobs', jobs.slice(0, 100));
+const connected = () => Boolean(sessionKey && cfg.creatorId);
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ---------- Roblox through the Worker ----------
+async function roblox(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (opts.key !== false) {
+    if (!sessionKey) throw new Error('Connect your Roblox account first.');
+    headers['X-Roblox-Key'] = sessionKey;
+  }
+  let r;
+  try { r = await fetch('/api/roblox/' + path, { method: opts.method || 'GET', body: opts.body, headers }); }
+  catch { throw new Error("Couldn't reach 3iaw.com. Check your internet and try again."); }
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || ('Roblox error ' + r.status));
+  return body;
+}
+
+async function resolveCreator(text, type) {
+  const kind = type === 'group' ? 'group' : 'user';
+  text = text.trim();
+  if (!text) throw new Error(kind === 'group' ? 'Enter the group ID.' : 'Enter your username or user ID.');
+  if (/^\d+$/.test(text)) return text;
+  const m = text.match(/\/(?:users|groups|communities)\/(\d+)/);
+  if (m) return m[1];
+  if (kind === 'user' && /^@?\w{3,20}$/.test(text)) {
+    const r = await roblox('user', { key: false, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: text.replace(/^@/, '') }) });
+    return String(r.id);
+  }
+  throw new Error(kind === 'group' ? 'Use the number from the group page link.' : "That doesn't look like a username or user ID.");
+}
+
+// ---------- audio processing ----------
+let lamePromise;
+function loadLame() {
+  if (window.lamejs) return Promise.resolve(window.lamejs);
+  lamePromise = lamePromise || new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = LAME_URL; s.async = true;
+    s.onload = () => resolve(window.lamejs);
+    s.onerror = () => { lamePromise = null; reject(new Error("Couldn't load the MP3 encoder. Check your internet and try again.")); };
+    document.head.appendChild(s);
+  });
+  return lamePromise;
+}
+
+async function decode(file) {
+  const data = await file.arrayBuffer();
+  const ctx = new OfflineAudioContext(2, 1, RATE); // decodeAudioData resamples to the context's rate
+  try { return await ctx.decodeAudioData(data); }
+  catch { throw new Error("This file couldn't be read as audio. Try an MP3, WAV or OGG file."); }
+}
+
+// speed, mode ('tempo' keeps pitch, 'pitch' lets pitch follow speed), semitones on top
+async function stretch(L, R, s, onProgress) {
+  const st = new SoundTouch();
+  st.rate = s.mode === 'pitch' ? s.speed : 1;
+  st.tempo = s.mode === 'pitch' ? 1 : s.speed;
+  st.pitchSemitones = s.pitch;
+  const len = L.length;
+  const pad = RATE; // a second of silence pushes the last samples out of SoundTouch's buffers
+  const source = {
+    extract(target, numFrames, position) {
+      const n = Math.min(numFrames, len + pad - position);
+      for (let i = 0; i < n; i++) {
+        const p = position + i;
+        target[i * 2] = p < len ? L[p] : 0;
+        target[i * 2 + 1] = p < len ? R[p] : 0;
+      }
+      return Math.max(0, n);
+    },
+  };
+  const filter = new SimpleFilter(source, st);
+  const want = Math.round(len / s.speed);
+  const outL = new Float32Array(want), outR = new Float32Array(want);
+  const CHUNK = 8192, tmp = new Float32Array(CHUNK * 2);
+  let n = 0, loops = 0;
+  while (n < want) {
+    const got = filter.extract(tmp, CHUNK);
+    if (!got) break;
+    const take = Math.min(got, want - n);
+    for (let i = 0; i < take; i++) { outL[n + i] = tmp[i * 2]; outR[n + i] = tmp[i * 2 + 1]; }
+    n += take;
+    if (++loops % 16 === 0) { onProgress(n / want); await pause(); }
+  }
+  return [outL.subarray(0, n), outR.subarray(0, n)];
+}
+
+// gain, then a limiter (instant attack, ~80 ms release) so loud settings don't clip
+function amplify(L, R, gainDb) {
+  const g = Math.pow(10, gainDb / 20), limit = 0.97, release = Math.exp(-1 / (0.08 * RATE));
+  let env = 0;
+  for (let i = 0; i < L.length; i++) {
+    const a = L[i] * g, b = R[i] * g;
+    const peak = Math.max(Math.abs(a), Math.abs(b));
+    env = peak > env ? peak : env * release + peak * (1 - release);
+    const k = env > limit ? limit / env : 1;
+    L[i] = a * k; R[i] = b * k;
+  }
+}
+
+async function encodeMp3(L, R, onProgress) {
+  const lame = await loadLame();
+  const enc = new lame.Mp3Encoder(2, RATE, KBPS);
+  const parts = [], BLOCK = 1152;
+  const l16 = new Int16Array(BLOCK), r16 = new Int16Array(BLOCK);
+  const toInt = (v) => (v < -1 ? -32768 : v > 1 ? 32767 : Math.round(v * (v < 0 ? 32768 : 32767)));
+  for (let i = 0; i < L.length; i += BLOCK) {
+    const n = Math.min(BLOCK, L.length - i);
+    for (let k = 0; k < n; k++) { l16[k] = toInt(L[i + k]); r16[k] = toInt(R[i + k]); }
+    const out = enc.encodeBuffer(n === BLOCK ? l16 : l16.subarray(0, n), n === BLOCK ? r16 : r16.subarray(0, n));
+    if (out.length) parts.push(new Uint8Array(out));
+    if ((i / BLOCK) % 300 === 0) { onProgress(i / L.length); await pause(); }
+  }
+  const end = enc.flush();
+  if (end.length) parts.push(new Uint8Array(end));
+  return new Blob(parts, { type: 'audio/mpeg' });
+}
+
+async function convert(job, file) {
+  const prog = (from, span) => (f) => { job.progress = Math.round((from + f * span) * 100); render(); };
+  const buf = await decode(file);
+  prog(0, 0.1)(1);
+  const start = Math.min(Math.floor((job.trimStart || 0) * RATE), buf.length);
+  const maxIn = Math.floor(MAX_SECONDS * job.speed * RATE);
+  const inLen = Math.min(buf.length - start, maxIn);
+  if (inLen < RATE * 0.2) throw new Error('Nothing left to convert after the start time.');
+  job.notes = buf.length - start > maxIn ? ['Cut to 7:00, the longest audio Roblox allows.'] : [];
+  // copies, so the effects never change the decoded original
+  let L = buf.getChannelData(0).slice(start, start + inLen);
+  let R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice(start, start + inLen);
+  if (Math.abs(job.speed - 1) > 1e-3 || Math.abs(job.pitch) > 1e-3) [L, R] = await stretch(L, R, job, prog(0.1, 0.5));
+  amplify(L, R, job.gain);
+  const blob = await encodeMp3(L, R, prog(0.6, 0.4));
+  if (blob.size > MAX_BYTES) throw new Error(`The MP3 is ${(blob.size / 1e6).toFixed(1)} MB; Roblox allows 20 MB.`);
+  outputs.set(job.id, { blob, url: URL.createObjectURL(blob) });
+  Object.assign(job, { outputSeconds: Math.round((L.length / RATE) * 10) / 10, outputBytes: blob.size, progress: 100 });
+}
+
+// ---------- upload + moderation ----------
+async function upload(job) {
+  const out = outputs.get(job.id);
+  if (!out) throw new Error('The converted file is gone (the page was reloaded). Convert it again.');
+  Object.assign(job, { stage: 'upload', progress: 20, error: null }); render();
+  const creator = cfg.creatorType === 'group' ? { groupId: cfg.creatorId } : { userId: cfg.creatorId };
+  const fd = new FormData();
+  fd.append('request', JSON.stringify({
+    assetType: 'Audio', displayName: (job.name || 'Audio').slice(0, 50),
+    description: 'Uploaded with 3iaw.com Audio Converter', creationContext: { creator },
+  }));
+  fd.append('fileContent', out.blob, 'audio.mp3');
+  let op = await roblox('upload', { method: 'POST', body: fd });
+  job.progress = 60; render();
+  // Roblox processes uploads in the background; ask until it has an asset ID (up to 2 minutes)
+  for (let i = 0; i < 60 && !op.done; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const id = op.operationId || String(op.path || '').split('/').pop();
+    op = await roblox('operation?id=' + encodeURIComponent(id));
+  }
+  if (!op.done) throw new Error("Roblox didn't finish processing the upload in 2 minutes. Check your Creator Dashboard.");
+  if (op.error) throw new Error('Roblox rejected the upload: ' + (op.error.message || JSON.stringify(op.error)));
+  Object.assign(job, { assetId: String(op.response.assetId), stage: 'moderation', moderation: 'Reviewing', progress: 100 });
+  saveJobs(); render();
+  await checkModeration(job);
+}
+
+async function checkModeration(job) {
+  if (!job.assetId || !sessionKey) return;
+  try {
+    const r = await roblox('asset?id=' + encodeURIComponent(job.assetId));
+    job.moderation = r.moderationState || 'Reviewing';
+    job.moderationError = null;
+    if (['Approved', 'Rejected'].includes(job.moderation)) job.stage = 'done';
+  } catch (e) { job.moderationError = e.message; }
+  saveJobs(); render();
+}
+
+setInterval(() => {
+  jobs.filter((j) => j.assetId && j.moderation === 'Reviewing').forEach(checkModeration);
+}, 30000);
+
+async function run(job, file) {
+  try {
+    job.stage = 'convert'; render();
+    await convert(job, file);
+    if (job.autoUpload) await upload(job);
+    else job.stage = 'ready';
+  } catch (e) {
+    Object.assign(job, { failedStage: job.stage, stage: 'error', error: e.message || String(e) });
+  }
+  saveJobs(); render();
+}
+
+// ---------- form ----------
+let file = null, mode = 'tempo', filter = 'all';
+const speed = $('#speed'), pitch = $('#pitch'), gain = $('#gain');
+const showSpeed = () => { $('#speedVal').textContent = (+speed.value).toFixed(2) + 'x'; };
+const showPitch = () => { $('#pitchVal').textContent = (pitch.value > 0 ? '+' : '') + pitch.value + ' st'; };
+const showGain = () => { $('#gainVal').textContent = (gain.value > 0 ? '+' : '') + gain.value + ' dB'; };
+function setMode(v) { mode = v; document.querySelectorAll('#mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
+function markPreset() {
+  document.querySelectorAll('#fx button').forEach((b) => b.classList.toggle('on',
+    +b.dataset.s === +speed.value && +b.dataset.p === +pitch.value && b.dataset.m === mode));
+}
+speed.oninput = () => { showSpeed(); markPreset(); };
+pitch.oninput = () => { showPitch(); markPreset(); };
+gain.oninput = showGain;
+document.querySelectorAll('[data-speed]').forEach((b) => { b.onclick = () => { speed.value = b.dataset.speed; showSpeed(); markPreset(); }; });
+document.querySelectorAll('[data-pv]').forEach((b) => { b.onclick = () => { pitch.value = b.dataset.pv; showPitch(); markPreset(); }; });
+document.querySelectorAll('#mode button').forEach((b) => { b.onclick = () => { setMode(b.dataset.v); markPreset(); }; });
+document.querySelectorAll('#fx button').forEach((b) => {
+  b.onclick = () => { speed.value = b.dataset.s; pitch.value = b.dataset.p; setMode(b.dataset.m); showSpeed(); showPitch(); markPreset(); };
+});
+markPreset();
+
+const drop = $('#drop'), fileIn = $('#fileIn');
+function setFile(f) {
+  file = f || null;
+  $('#dropName').textContent = f ? f.name : 'Drop an audio file here';
+  drop.classList.toggle('has', Boolean(f));
+}
+drop.onclick = () => fileIn.click();
+drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileIn.click(); } };
+fileIn.onchange = () => setFile(fileIn.files[0]);
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); };
+
+const autoUpload = $('#autoUpload');
+const syncGo = () => { $('#goBtn').textContent = autoUpload.checked ? 'Convert & upload' : 'Convert only'; };
+autoUpload.onchange = syncGo; syncGo();
+
+$('#acForm').onsubmit = (e) => {
+  e.preventDefault();
+  const err = $('#formErr'); err.textContent = '';
+  if (!file) { err.textContent = 'Choose an audio file first.'; return; }
+  if (autoUpload.checked && !connected()) { err.textContent = 'Connect your Roblox account first, or untick upload.'; openSettings(); return; }
+  if (file.size > 300 * 1024 * 1024) { err.textContent = 'That file is too big (over 300 MB).'; return; }
+  const job = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name: ($('#assetName').value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 50),
+    source: file.name, speed: +speed.value, mode, pitch: +pitch.value, gain: +gain.value,
+    trimStart: Math.max(0, +$('#trimStart').value || 0), autoUpload: autoUpload.checked,
+    stage: 'queued', progress: 0, createdAt: Date.now(),
+  };
+  jobs.unshift(job); saveJobs();
+  const f = file;
+  setFile(null); fileIn.value = ''; $('#assetName').value = '';
+  run(job, f);
+};
+
+// ---------- settings ----------
+const dlg = $('#settings');
+function renderConn() {
+  $('#connDot').classList.toggle('on', connected());
+  $('#connText').textContent = connected() ? (cfg.creatorType === 'group' ? 'Group ' : 'User ') + cfg.creatorId : 'Connect Roblox';
+}
+const syncCreatorLbl = () => {
+  const g = $('#creatorType').value === 'group';
+  $('#creatorLbl').textContent = g ? 'Group ID' : 'Username or user ID';
+  $('#creatorId').placeholder = g ? 'group ID or group link' : 'username, ID or profile link';
+};
+function openSettings() {
+  $('#settingsErr').textContent = '';
+  $('#apiKey').value = '';
+  $('#keyHint').textContent = sessionKey ? '(saved, ends in ' + sessionKey.slice(-4) + ')' : '';
+  $('#creatorType').value = cfg.creatorType || 'user';
+  $('#creatorId').value = cfg.creatorId || '';
+  $('#remember').checked = store.get('ac.key', '') !== '' || !sessionKey;
+  syncCreatorLbl();
+  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+}
+$('#creatorType').onchange = syncCreatorLbl;
+$('#openSettings').onclick = openSettings;
+$('#cancelSettings').onclick = () => dlg.close();
+$('#forgetKey').onclick = () => {
+  sessionKey = ''; store.del('ac.key'); renderConn();
+  $('#keyHint').textContent = ''; toast('Key removed from this browser');
+};
+$('#settingsForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const err = $('#settingsErr'); err.textContent = '';
+  const key = $('#apiKey').value.trim();
+  if (!key && !sessionKey) { err.textContent = 'Paste your API key.'; return; }
+  const btn = $('#saveSettings'); btn.disabled = true;
+  try {
+    const type = $('#creatorType').value === 'group' ? 'group' : 'user';
+    const id = await resolveCreator($('#creatorId').value, type);
+    if (key) sessionKey = key;
+    cfg = { creatorType: type, creatorId: id };
+    store.set('ac.cfg', cfg);
+    if ($('#remember').checked) store.set('ac.key', sessionKey); else store.del('ac.key');
+    $('#formErr').textContent = '';
+    renderConn(); dlg.close(); toast('Connected as ' + type + ' ' + id);
+  } catch (ex) { err.textContent = ex.message; }
+  finally { btn.disabled = false; }
+};
+
+// ---------- job list ----------
+const fmtTime = (s) => (s ? Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0') : '');
+function steps(j) {
+  const list = ['convert', 'upload', 'moderation'];
+  const cur = j.stage === 'ready' ? 'upload' : j.stage;
+  const failAt = j.stage === 'error' ? (list.includes(j.failedStage) ? j.failedStage : 'convert') : null;
+  let before = true;
+  return list.map((s) => {
+    let cls = '';
+    if (failAt) { if (s === failAt) { cls = 'fail'; before = false; } else if (before) cls = 'done'; }
+    else if (j.stage === 'done') cls = 'done';
+    else if (s === cur) { cls = j.stage === 'ready' ? '' : 'active'; before = false; }
+    else if (before && cur !== 'queued') cls = 'done';
+    const label = s === 'convert' ? 'convert ' + (+j.speed).toFixed(2) + 'x' : s === 'moderation' && j.moderation ? 'moderation: ' + j.moderation : s;
+    return `<span class="ac-step ${cls}">${esc(label)}</span>`;
+  }).join('');
+}
+function badge(j) {
+  if (j.stage === 'error') return '<span class="ac-badge error">Failed</span>';
+  if (j.moderation) return `<span class="ac-badge ${esc(j.moderation)}">${esc(j.moderation)}</span>`;
+  if (j.stage === 'ready') return '<span class="ac-badge ready">Ready</span>';
+  return `<span class="ac-badge">${esc(j.stage === 'queued' ? 'Waiting' : j.stage)}</span>`;
+}
+function jobHTML(j) {
+  const busy = ['queued', 'convert', 'upload'].includes(j.stage);
+  const out = outputs.get(j.id);
+  const fx = [(+j.speed).toFixed(2) + 'x ' + (j.mode === 'pitch' ? '(pitch follows)' : '(pitch kept)')];
+  if (j.pitch) fx.push('pitch ' + (j.pitch > 0 ? '+' : '') + j.pitch + ' st');
+  if (j.gain) fx.push((j.gain > 0 ? '+' : '') + j.gain + ' dB');
+  if (j.outputSeconds) fx.push(fmtTime(j.outputSeconds));
+  if (j.outputBytes) fx.push((j.outputBytes / 1e6).toFixed(1) + ' MB');
+  const fileName = (j.name || 'audio').replace(/[\\/:*?"<>|]/g, '') + '.mp3';
+  return `<div class="ac-job" data-id="${esc(j.id)}">
+    <div class="ac-job-top"><div style="min-width:0"><div class="ac-job-title">${esc(j.name)}</div><div class="ac-job-src">${esc(j.source)}</div></div>${badge(j)}</div>
+    <div class="ac-steps">${steps(j)}</div>
+    ${busy ? `<div class="ac-bar"><i style="width:${j.progress || 0}%"></i></div>` : ''}
+    <div class="ac-meta">${fx.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
+    ${j.assetId ? `<div class="ac-asset"><span>rbxassetid://</span><b>${esc(j.assetId)}</b><button type="button" class="ac-btn" data-act="copy">Copy</button></div>` : ''}
+    ${(j.notes || []).map((n) => `<div class="ac-warn">${esc(n)}</div>`).join('')}
+    ${j.error ? `<div class="ac-err">${esc(j.error)}</div>` : ''}
+    ${j.moderationError ? `<div class="ac-err">${esc(j.moderationError)}</div>` : ''}
+    <div class="ac-actions">
+      ${out ? `<audio controls preload="metadata" src="${out.url}"></audio>` : ''}
+      ${j.stage === 'ready' || (j.stage === 'error' && j.failedStage === 'upload' && out) ? '<button type="button" class="ac-btn solid" data-act="upload">Upload to Roblox</button>' : ''}
+      ${j.assetId ? '<button type="button" class="ac-btn" data-act="check">Check status</button>' : ''}
+      ${out ? `<a class="ac-btn" href="${out.url}" download="${esc(fileName)}">Download MP3</a>` : ''}
+      ${!busy ? '<button type="button" class="ac-btn" data-act="remove">Remove</button>' : ''}
+    </div></div>`;
+}
+function matches(j) {
+  if (filter === 'all') return true;
+  if (filter === 'failed') return j.stage === 'error' || j.moderation === 'Rejected';
+  return j.moderation === filter;
+}
+let lastHTML = '';
+function render() {
+  const up = jobs.filter((j) => j.assetId);
+  $('#sTotal').textContent = up.length;
+  $('#sOk').textContent = up.filter((j) => j.moderation === 'Approved').length;
+  $('#sRev').textContent = up.filter((j) => j.moderation === 'Reviewing').length;
+  $('#sBad').textContent = up.filter((j) => j.moderation === 'Rejected').length;
+  const shown = jobs.filter(matches);
+  const html = shown.length ? shown.map(jobHTML).join('')
+    : `<div class="ac-empty">${jobs.length ? 'Nothing here with this filter.' : 'No audio yet. Choose a file on the left to start.'}</div>`;
+  if (html === lastHTML) return;
+  // rebuilding would stop a preview that's playing; it re-renders on the next change instead
+  if ([...document.querySelectorAll('#jobs audio')].some((a) => !a.paused) && !shown.some((j) => ['convert', 'upload'].includes(j.stage))) return;
+  lastHTML = html;
+  $('#jobs').innerHTML = html;
+}
+$('#jobs').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const j = jobs.find((x) => x.id === b.closest('.ac-job').dataset.id); if (!j) return;
+  const act = b.dataset.act;
+  if (act === 'copy') {
+    try { await navigator.clipboard.writeText(j.assetId); toast('Asset ID copied'); } catch { toast('Copy failed: ' + j.assetId); }
+  } else if (act === 'upload') {
+    if (!connected()) { openSettings(); return; }
+    try { await upload(j); } catch (ex) { Object.assign(j, { failedStage: 'upload', stage: 'error', error: ex.message }); }
+    saveJobs(); render();
+  } else if (act === 'check') {
+    if (!sessionKey) { openSettings(); return; }
+    await checkModeration(j); toast('Status: ' + (j.moderation || 'unknown'));
+  } else if (act === 'remove') {
+    if (!confirm('Remove this from the list? Audio already on Roblox stays there.')) return;
+    const out = outputs.get(j.id); if (out) URL.revokeObjectURL(out.url);
+    outputs.delete(j.id); jobs = jobs.filter((x) => x !== j); saveJobs(); render();
+  }
+});
+document.querySelectorAll('#filter button').forEach((b) => {
+  b.onclick = () => { filter = b.dataset.f; document.querySelectorAll('#filter button').forEach((x) => x.classList.toggle('on', x === b)); render(); };
+});
+window.addEventListener('beforeunload', (e) => { if (jobs.some((j) => ['convert', 'upload'].includes(j.stage))) e.preventDefault(); });
+
+renderConn();
+render();
+jobs.filter((j) => j.assetId && j.moderation === 'Reviewing').forEach(checkModeration);

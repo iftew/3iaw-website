@@ -3,6 +3,7 @@
 #   systems.html         all systems (/systems)
 #   ugc.html             custom UGC (/ugc)
 #   games.html           the Roblox games (/games)
+#   audio.html           the Audio Converter (/audio), from scripts/audio-page.html
 #   sitemap.xml          every page above plus the homepage
 # Run it after changing systems, UGC or games on the homepage, then commit the results:
 #   powershell -ExecutionPolicy Bypass -File scripts\build-pages.ps1
@@ -83,6 +84,9 @@ function Page([string]$path, [string]$title, [string]$description, [string]$acti
     $cls = if ($link[0] -eq $active) { ' class="active" aria-current="page"' } else { '' }
     $nav += '      <li><a href="' + $link[0] + '"' + $cls + '>' + $link[1] + "</a></li>`n"
   }
+  # the Audio Converter tab sits top left (like the homepage) and opens in its own browser tab
+  $toolAttr = if ($active -eq '/audio') { ' class="tool-tab active" aria-current="page"' } else { ' class="tool-tab" target="_blank" rel="noopener"' }
+  $toolTab = '<a href="/audio"' + $toolAttr + '><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18V6l11-2v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="16" r="3" stroke="currentColor" stroke-width="2"/></svg>Audio Converter</a>'
   $nav += '      <li><a href="/#contact" class="nav-cta">Contact</a></li>'
   $t = Html $title; $d = Html $description
   return @"
@@ -122,6 +126,7 @@ $extraHead
 <body class="subpage">
 <header id="siteHeader">
   <div class="brand-wrap">
+    $toolTab
   </div>
   <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav"><span></span></button>
   <nav id="siteNav" aria-label="Main">
@@ -296,6 +301,11 @@ $body = @"
 "@
 $pages += @{ Path = '/games'; Priority = '0.8' }
 Save 'games.html' (Page '/games' 'Roblox Games by 3Iaw: Bangali Hood, Bangla Town & More' 'Roblox games by 3Iaw: Bangali Era, Ondhokar, CTG CITY and Bangla Beach Hangout, plus developer work on Bangali Hood, Bangla Town, Mystic Hangout and more.' '/games' $body '' '')
+
+# ---------- Audio Converter (/audio): body is scripts/audio-page.html, the tool is assets/audio.js ----------
+$audioBody = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'audio-page.html'), $utf8)
+$pages += @{ Path = '/audio'; Priority = '0.7' }
+Save 'audio.html' (Page '/audio' 'Roblox Audio Converter: Speed, Pitch & Upload | 3Iaw' 'Free Roblox audio converter: change the speed and pitch of an audio file, add nightcore, slowed or sped up effects, and upload it to your Roblox account.' '/audio' $audioBody '<link rel="stylesheet" href="/assets/audio.css">' '<script type="module" src="/assets/audio.js"></script>')
 
 # ---------- sitemap ----------
 $ugcImages = ([regex]::Matches($ugcGrid, 'src="(assets/ugc/[^"]+\.png)"') | ForEach-Object { "    <image:image><image:loc>$site/$($_.Groups[1].Value)</image:loc></image:image>" }) -join "`n"
