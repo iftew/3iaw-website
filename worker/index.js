@@ -328,8 +328,8 @@ async function robloxPassOn(url, init) {
   const hint = res.status === 401 ? ' Check the API key in Connect Roblox.'
     : res.status === 403 ? ' Make sure the key has Assets Read and Write, and 0.0.0.0/0 under Accepted IP Addresses.'
     : res.status === 429 ? ' Roblox is limiting uploads right now (or your monthly audio quota is used up).' : '';
-  const text = String(msg).trim().replace(/([^.!?])$/, '$1.');
-  return json({ error: `Roblox ${res.status}: ${text}${hint}` }, res.status >= 500 ? 502 : res.status);
+  const detail = String(msg).trim().replace(/([^.!?])$/, '$1.');
+  return json({ error: `Roblox ${res.status}: ${detail}${hint}` }, res.status >= 500 ? 502 : res.status);
 }
 
 async function robloxAudio(req, path) {
