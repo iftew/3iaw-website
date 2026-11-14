@@ -376,7 +376,8 @@ async function robloxAudio(req, path) {
     try { meta = JSON.parse(String(form.get('request') || '')); } catch { return json({ error: 'Bad request.' }, 400); }
     if (!(file instanceof File) || file.size > MAX_UPLOAD || meta.assetType !== 'Audio') return json({ error: 'Bad request.' }, 400);
     const out = new FormData();
-    out.append('request', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    // a plain text field: sent as a Blob it becomes a file part, and Roblox answers "Request body cannot be empty"
+    out.append('request', JSON.stringify(meta));
     out.append('fileContent', new File([file], 'audio.mp3', { type: 'audio/mpeg' }));
     return robloxPassOn(ROBLOX_ASSETS + '/assets', { method: 'POST', headers: auth, body: out });
   }
