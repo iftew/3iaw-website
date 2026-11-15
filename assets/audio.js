@@ -342,12 +342,18 @@ $('#acForm').onsubmit = (e) => {
 
 // ---------- console panels (sidebar) ----------
 const navTabs = [...document.querySelectorAll('.ac-nav [role="tab"]')];
+// on wide screens Convert shows the Roblox Account panel beside it, as a second column
+const wide = matchMedia('(min-width: 1200px)');
+let current = 'convert';
 function showPanel(name, focus) {
+  current = name;
+  const duo = name === 'convert' && wide.matches;
+  $('#panels').classList.toggle('duo', duo);
   navTabs.forEach((t) => {
     const on = t.dataset.panel === name;
     t.setAttribute('aria-selected', String(on));
     t.tabIndex = on ? 0 : -1;
-    $('#panel-' + t.dataset.panel).hidden = !on;
+    $('#panel-' + t.dataset.panel).hidden = !(on || (duo && t.dataset.panel === 'account'));
     if (on && focus) t.focus();
   });
   // on a phone the panel is below the menu, so bring its top into view
@@ -365,6 +371,8 @@ navTabs.forEach((t, i) => {
   };
 });
 
+wide.addEventListener('change', () => showPanel(current));
+if (wide.matches) showPanel('convert');
 // ---------- settings ----------
 // the Roblox account panel replaces the old pop-up; "closing" it goes back to Convert
 const dlg = { close: () => showPanel('convert') };
@@ -389,7 +397,7 @@ function openSettings() {
   $('#creatorId').value = cfg.creatorId || '';
   $('#remember').checked = store.get('ac.key', '') !== '' || !sessionKey;
   syncCreatorLbl();
-  showPanel('account');
+  if (!(current === 'convert' && wide.matches)) showPanel('account');
   if (!sessionKey) $('#apiKey').focus({ preventScroll: true });
 }
 $('#creatorType').onchange = syncCreatorLbl;
@@ -420,27 +428,41 @@ $('#settingsForm').onsubmit = async (e) => {
 
 // ---------- job list ----------
 const fmtTime = (s) => (s ? Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0') : '');
+// the pipeline on each history row: Convert — Upload — Review — In game
 function steps(j) {
-  const list = ['convert', 'upload', 'moderation'];
-  const cur = j.stage === 'ready' ? 'upload' : j.stage;
-  const failAt = j.stage === 'error' ? (list.includes(j.failedStage) ? j.failedStage : 'convert') : null;
-  let before = true;
-  return list.map((s) => {
-    let cls = '';
-    if (failAt) { if (s === failAt) { cls = 'fail'; before = false; } else if (before) cls = 'done'; }
-    else if (j.stage === 'done') cls = 'done';
-    else if (s === cur) { cls = j.stage === 'ready' ? '' : 'active'; before = false; }
-    else if (before && cur !== 'queued') cls = 'done';
-    const label = s === 'convert' ? 'convert ' + (+j.speed).toFixed(2) + 'x' : s === 'moderation' && j.moderation ? 'moderation: ' + j.moderation : s;
-    return `<span class="ac-step ${cls}">${esc(label)}</span>`;
-  }).join('');
+  const failAt = j.stage === 'error' ? (j.failedStage === 'upload' ? 'upload' : 'convert') : null;
+  const st = {
+    convert: failAt === 'convert' ? 'fail' : j.stage === 'convert' ? 'active' : j.stage === 'queued' ? '' : 'done',
+    upload: failAt === 'upload' ? 'fail' : j.assetId ? 'done' : j.stage === 'upload' ? 'active' : '',
+    review: j.moderation === 'Approved' ? 'done' : j.moderation === 'Rejected' ? 'fail' : j.moderation === 'Reviewing' ? 'active' : '',
+    game: j.moderation === 'Approved' ? 'done' : '',
+  };
+  const names = { convert: 'Convert', upload: 'Upload', review: 'Review', game: 'In game' };
+  const icon = (c) => c === 'done' ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.3l2.6 2.6L12 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : c === 'fail' ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' : '<i></i>';
+  return Object.keys(names).map((k) => `<span class="ac-pipe-step ${st[k]}">${icon(st[k])}${names[k]}</span>`).join('<span class="ac-pipe-line"></span>');
 }
 function badge(j) {
   if (j.stage === 'error') return '<span class="ac-badge error">Failed</span>';
-  if (j.moderation) return `<span class="ac-badge ${esc(j.moderation)}">${esc(j.moderation)}</span>`;
-  if (j.stage === 'ready') return '<span class="ac-badge ready">Ready</span>';
-  return `<span class="ac-badge">${esc(j.stage === 'queued' ? 'Waiting' : j.stage)}</span>`;
+  if (j.moderation === 'Rejected') return '<span class="ac-badge Rejected">Rejected</span>';
+  if (j.moderation === 'Reviewing') return '<span class="ac-badge Reviewing">In review</span>';
+  if (j.stage === 'ready') return '<span class="ac-badge ready">Not uploaded</span>';
+  if (j.stage === 'queued') return '<span class="ac-badge">Waiting</span>';
+  return '';
 }
+function timeAgo(t) {
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return 'just now';
+  const [n, u] = s < 3600 ? [s / 60, 'minute'] : s < 86400 ? [s / 3600, 'hour'] : [s / 86400, 'day'];
+  const v = Math.floor(n);
+  return v + ' ' + u + (v === 1 ? '' : 's') + ' ago';
+}
+// which rows are unfolded survives re-rendering
+const openJobs = new Map();
+$('#jobs').addEventListener('toggle', (e) => {
+  const d = e.target.closest('.ac-job'); if (!d) return;
+  openJobs.set(d.dataset.id, d.open);
+}, true);
 function jobHTML(j) {
   const busy = ['queued', 'convert', 'upload'].includes(j.stage);
   const out = outputs.get(j.id);
@@ -449,9 +471,18 @@ function jobHTML(j) {
   if (j.outputSeconds) fx.push(fmtTime(j.outputSeconds));
   if (j.outputBytes) fx.push((j.outputBytes / 1e6).toFixed(1) + ' MB');
   const fileName = (j.name || 'audio').replace(/[\\/:*?"<>|]/g, '') + '.mp3';
-  return `<div class="ac-job" data-id="${esc(j.id)}">
-    <div class="ac-job-top"><div style="min-width:0"><div class="ac-job-title">${esc(j.name)}</div><div class="ac-job-src">${esc(j.source)}</div></div>${badge(j)}</div>
-    <div class="ac-steps">${steps(j)}</div>
+  const open = openJobs.has(j.id) ? openJobs.get(j.id) : (busy || j.stage === 'error');
+  return `<details class="ac-job" data-id="${esc(j.id)}"${open ? ' open' : ''}>
+    <summary class="ac-job-row">
+      <div class="ac-job-main">
+        <div class="ac-job-title">${esc(j.name)} ${badge(j)}</div>
+        <div class="ac-pipe">${steps(j)}</div>
+      </div>
+      <span class="ac-job-time">${esc(timeAgo(j.createdAt || Date.now()))}</span>
+      <span class="ac-chev" aria-hidden="true"></span>
+    </summary>
+    <div class="ac-job-body">
+    <div class="ac-job-src">${esc(j.source)}</div>
     ${busy ? `<div class="ac-bar"><i style="width:${j.progress || 0}%"></i></div>` : ''}
     <div class="ac-meta">${fx.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
     ${j.assetId ? `<div class="ac-asset"><a href="https://create.roblox.com/store/asset/${esc(j.assetId)}" target="_blank" rel="noopener">create.roblox.com/store/asset/${esc(j.assetId)}</a><button type="button" class="ac-btn" data-act="copyid">Copy ID</button><button type="button" class="ac-btn" data-act="copy">Copy link</button></div>` : ''}
@@ -464,7 +495,7 @@ function jobHTML(j) {
       ${j.assetId ? '<button type="button" class="ac-btn" data-act="check">Check status</button>' : ''}
       ${out ? `<a class="ac-btn" href="${out.url}" download="${esc(fileName)}">Download MP3</a>` : ''}
       ${!busy ? '<button type="button" class="ac-btn" data-act="remove">Remove</button>' : ''}
-    </div></div>`;
+    </div></div></details>`;
 }
 function matches(j) {
   if (filter === 'all') return true;
@@ -473,12 +504,7 @@ function matches(j) {
 }
 let lastHTML = '';
 function render() {
-  const up = jobs.filter((j) => j.assetId);
   $('#navCount').textContent = jobs.length;
-  $('#sTotal').textContent = up.length;
-  $('#sOk').textContent = up.filter((j) => j.moderation === 'Approved').length;
-  $('#sRev').textContent = up.filter((j) => j.moderation === 'Reviewing').length;
-  $('#sBad').textContent = up.filter((j) => j.moderation === 'Rejected').length;
   renderDash();
   const shown = jobs.filter(matches);
   const html = shown.length ? shown.map(jobHTML).join('')

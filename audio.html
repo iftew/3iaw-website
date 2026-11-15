@@ -52,7 +52,7 @@
 <main>
 <!-- Body of /audio (Audio Converter). scripts/build-pages.ps1 wraps it in the site header and footer and writes audio.html.
      The converter runs in the visitor's browser (assets/audio.js); Roblox calls go through the Worker (/api/roblox/*).
-     Console layout: a sidebar picks one panel (Convert, Your audio, Roblox account, Plans, Tutorial);
+     Console layout: a sidebar picks one panel (Convert, History, Roblox account, Plans, Tutorial);
      the welcome line and the four account cards sit above every panel. -->
 <section class="ac-console grid-bg">
   <aside class="ac-side" aria-label="Audio Converter sections">
@@ -66,7 +66,7 @@
       <button type="button" role="tab" id="tab-library" aria-controls="panel-library" aria-selected="false" tabindex="-1" data-panel="library">
         <span class="ac-num">02</span>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="ac-lbl">Your Audio</span> <span class="ac-count" id="navCount">0</span>
+        <span class="ac-lbl">History</span> <span class="ac-count" id="navCount">0</span>
       </button>
       <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-panel="account">
         <span class="ac-num">03</span>
@@ -92,12 +92,6 @@
         <div><b id="meName"></b><span id="mePlan"></span></div>
         <button type="button" class="ac-logout" id="logoutBtn" aria-label="Log out">Log out</button>
       </div>
-    </div>
-    <div class="ac-side-stats">
-      <div><b id="sTotal">0</b><span>Uploaded</span></div>
-      <div><b id="sOk" class="ok">0</b><span>Approved</span></div>
-      <div><b id="sRev" class="rev">0</b><span>Reviewing</span></div>
-      <div><b id="sBad" class="bad">0</b><span>Rejected</span></div>
     </div>
   </aside>
 
@@ -135,6 +129,7 @@
       </div>
     </div>
 
+    <div class="ac-panels" id="panels">
     <!-- 01 convert -->
     <div class="ac-panel" role="tabpanel" id="panel-convert" aria-labelledby="tab-convert">
       <span class="ac-crumb">// 01 &mdash; Convert</span>
@@ -202,9 +197,9 @@
 
     <!-- 02 your audio -->
     <div class="ac-panel" role="tabpanel" id="panel-library" aria-labelledby="tab-library" hidden>
-      <span class="ac-crumb">// 02 &mdash; Your audio</span>
-      <h2 class="ac-title">Your audio</h2>
-      <p class="ac-sub">Every conversion and upload, with its asset link and Roblox's moderation result. Statuses refresh on their own.</p>
+      <span class="ac-crumb">// 02 &mdash; History</span>
+      <h2 class="ac-title">Conversion History</h2>
+      <p class="ac-sub">Track all your audio conversions and uploads. Statuses refresh on their own.</p>
       <div class="ac-card">
         <div class="ac-card-head">
           <span>History</span>
@@ -320,10 +315,11 @@
           <li><b>Connect Roblox</b><span>Create an Open Cloud API key with Assets read and write, and paste it in Roblox account.</span></li>
           <li><b>Choose your audio</b><span>Use audio you made or have permission to use, or a track from Roblox's own audio library.</span></li>
           <li><b>Pick a preset</b><span>Default keeps the sound as it is. Adjust Speed, Amplify and Max Duration if you need to.</span></li>
-          <li><b>Convert &amp; upload</b><span>The audio goes to your account and Roblox reviews it. Follow the status in Your audio.</span></li>
+          <li><b>Convert &amp; upload</b><span>The audio goes to your account and Roblox reviews it. Follow the status in History.</span></li>
           <li><b>Use it in your game</b><span>When it's approved, copy the link or ID and set it as a Sound's SoundId in Roblox Studio.</span></li>
         </ol>
       </div>
+    </div>
     </div>
   </div>
 </section>

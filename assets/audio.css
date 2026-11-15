@@ -380,3 +380,46 @@
   .ac-nav button[aria-selected="true"]::after{display:none;}
   .ac-lbl{flex:none;}
 }
+
+/* fill the width; on wide screens Convert and Roblox Account sit side by side */
+.ac-main{padding-right:3vw;}
+.ac-hello, .ac-tiles, .ac-panel{max-width:1240px;}
+.ac-panels.duo{display:grid; grid-template-columns:minmax(0,1.65fr) minmax(330px,1fr); gap:1.6rem; align-items:start; max-width:1240px;}
+.ac-panels.duo .ac-panel{max-width:none;}
+.ac-panels.duo #panel-account .ac-sub{margin-bottom:1.2rem;}
+.ac-panels.duo #panel-account .ac-dialog-body .ac-row{grid-template-columns:1fr;}
+.ac-panels.duo #panel-account .ac-dialog-foot{flex-wrap:wrap;}
+.ac-panels.duo #cancelSettings{display:none;}
+.ac-panels.duo #panel-account{position:sticky; top:90px;}
+
+/* history rows: title + pipeline, time and a chevron; details fold out */
+#panel-library #jobs .ac-job{background:rgba(255,255,255,.015); padding:0; border-radius:14px; transition:border-color .2s ease, background .2s ease;}
+#panel-library #jobs .ac-job:hover{border-color:rgba(255,255,255,.14);}
+#panel-library #jobs .ac-job[open]{background:rgba(255,255,255,.03);}
+.ac-job-row{display:flex; align-items:center; gap:1rem; padding:1rem 1.1rem; cursor:pointer; list-style:none;}
+.ac-job-row::-webkit-details-marker{display:none;}
+.ac-job-main{flex:1; min-width:0;}
+.ac-job-title{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; font-weight:600; font-size:.95rem;}
+.ac-job-title .ac-badge{margin-left:0;}
+.ac-job-time{flex:none; font:.74rem var(--font-mono); color:var(--grey-dim);}
+.ac-chev{flex:none; width:8px; height:8px; margin:0 .2rem; border-right:1.5px solid var(--grey-mid); border-bottom:1.5px solid var(--grey-mid); transform:translateY(-2px) rotate(45deg); transition:transform .25s var(--ease);}
+.ac-job[open] .ac-chev{transform:translateY(2px) rotate(-135deg);}
+.ac-job-body{padding:0 1.1rem 1rem; border-top:1px solid var(--line-soft); padding-top:.9rem; animation:acRise .3s var(--ease) both;}
+.ac-job-body .ac-job-src{margin-bottom:.2rem;}
+.ac-pipe{display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; margin-top:.55rem;}
+.ac-pipe-step{display:inline-flex; align-items:center; gap:.4rem; font:500 .68rem var(--font-mono); text-transform:uppercase; letter-spacing:.07em; color:var(--grey-dim);}
+.ac-pipe-step svg, .ac-pipe-step > i{flex:none; display:grid; place-items:center; width:16px; height:16px; border-radius:50%;}
+.ac-pipe-step > i{background:var(--surface-2); box-shadow:inset 0 0 0 4px var(--panel), inset 0 0 0 5px var(--line);}
+.ac-pipe-step.done{color:var(--ok);}
+.ac-pipe-step.done svg{background:rgba(127,209,164,.16); padding:2px;}
+.ac-pipe-step.fail{color:#f08a8a;}
+.ac-pipe-step.fail svg{background:rgba(240,138,138,.16); padding:2px;}
+.ac-pipe-step.active{color:#f5c451;}
+.ac-pipe-step.active > i{background:#f5c451; box-shadow:0 0 0 3px rgba(245,196,81,.18); animation:acPulse 1.4s ease-in-out infinite;}
+.ac-pipe-line{width:26px; height:1px; background:rgba(255,255,255,.16);}
+@keyframes acPulse{50%{box-shadow:0 0 0 6px rgba(245,196,81,0);}}
+@media (max-width:560px){
+  .ac-pipe-line{width:10px;}
+  .ac-job-time{display:none;}
+}
+@media (prefers-reduced-motion: reduce){ .ac-pipe-step.active > i, .ac-job-body{animation:none !important;} }
