@@ -12,7 +12,15 @@
 //   POST   /api/roblox/upload       Audio Converter: upload an MP3 with the visitor's own Open Cloud key
 //   GET    /api/roblox/operation    Audio Converter: is the upload done, and its asset ID
 //   GET    /api/roblox/asset        Audio Converter: moderation status of an uploaded asset
+//   GET    /api/auth/discord        Audio Converter: log in with Discord (redirects to Discord)
+//   GET    /api/auth/callback       Discord sends the visitor back here; starts a 30-day session
+//   GET    /api/auth/me             who is logged in, and their free uploads left or plan end date
+//   POST   /api/auth/logout         end the session
+//   POST   /api/plan-order          buy an Audio Converter plan for the logged-in Discord account
 //
+// Audio Converter plans: uploading needs a Discord login, and each Discord account gets FREE_UPLOADS uploads.
+// After that it needs a plan, bought in the converter (bKash / Nagad). Pressing "Confirm payment" in
+// reviews-admin.html unlocks that Discord account for the plan's days; Undo takes the days back.
 // How a purchase is confirmed for a review: the order ID and email must match an order placed here, and
 // the owner must have pressed "Confirm payment" for it in reviews-admin.html. That covers Robux buyers too:
 // Roblox blocks Cloudflare's shared servers, so the site can't ask Roblox who owns a game pass.
@@ -20,14 +28,24 @@
 // The Roblox numbers come from .github/workflows/stats.yml, which publishes stats.json to the `data` branch.
 //
 // Bindings (wrangler.jsonc): DATA (KV), MAILER (send_email), ASSETS. Secret: REVIEWS_ADMIN_KEY.
-// KV keys: review:<id>, order:<orderId>, paid:<orderId>, message:<time>-<rand>
+// KV keys: review:<id>, order:<orderId>, paid:<orderId>, message:<time>-<rand>,
+//          session:<sid> (Discord login), uses:discord:<id> (uploads made), sub:discord:<id> ({grants}),
+//          grant:<orderId> (which account a plan order unlocked)
+// Secret DISCORD_CLIENT_SECRET and var DISCORD_CLIENT_ID: the Discord app used for logging in.
 
 import { EmailMessage } from 'cloudflare:email';
 
-// the items in the shop (index.html #shopData), plus agreed UGC
+// Audio Converter plans (index.html #shopData "plans" has the same names and prices) -> days of unlimited uploads
+const PLANS = { 'Audio Converter: 1 Month': 30, 'Audio Converter: 3 Months': 90, 'Audio Converter: 1 Year': 365 };
+const PLAN_PRICES = { 'Audio Converter: 1 Month': 2000, 'Audio Converter: 3 Months': 5000, 'Audio Converter: 1 Year': 10000 }; // ৳
+const FREE_UPLOADS = 2;
+const DAY = 86400000;
+
+// the items in the shop (index.html #shopData), plus agreed UGC and the Audio Converter plans
 const ITEMS = [
   'Fly Race System', 'Game Essentials Pack', 'Rowboat System', 'Kite Fighting System', 'Donation System',
   'Halloween Tools Pack', 'Partner System', 'Profile System', 'Concert Stage System', 'Custom UGC',
+  ...Object.keys(PLANS),
 ];
 
 const STATS_URL = 'https://raw.githubusercontent.com/iftew/3iaw-website/data/stats.json';
@@ -215,6 +233,8 @@ async function placeOrder(req, env) {
   if (!ITEMS.includes(order.item)) return json({ error: 'Pick an item.' }, 400);
   if (!['Robux', 'bKash', 'Nagad'].includes(order.payment)) return json({ error: 'Pick a payment method.' }, 400);
   if (order.item === 'Custom UGC' && order.payment === 'Robux') return json({ error: 'UGC is paid with bKash or Nagad.' }, 400);
+  // plans belong to a Discord account, so they're bought inside the Audio Converter while logged in
+  if (PLANS[order.item]) return json({ error: 'Buy Audio Converter plans on 3iaw.com/audio, logged in with Discord.' }, 400);
   if (!EMAIL_RE.test(order.email)) return json({ error: 'Enter a correct email address.' }, 400);
   if (!order.username) return json({ error: 'Enter your Roblox username.' }, 400);
   if (order.payment !== 'Robux' && !order.transactionId) return json({ error: 'Enter the transaction ID from your receipt.' }, 400);
@@ -290,8 +310,15 @@ async function orders(req, env) {
   if (req.method === 'GET') {
     const [list, messages] = await Promise.all([listJson(env, 'order:'), listJson(env, 'message:')]);
     const marks = await Promise.all(list.map((o) => env.DATA.get('paid:' + o.orderId)));
+    // for confirmed plan orders: which Roblox account it unlocked, and until when
+    const unlocks = await Promise.all(list.map(async (o, i) => {
+      if (!PLANS[o.item] || !marks[i]) return null;
+      const grant = await env.DATA.get('grant:' + o.orderId, 'json');
+      if (!grant) return null;
+      return { creator: grant.creator, until: planUntil(await env.DATA.get('sub:' + grant.creator, 'json')) };
+    }));
     return json({
-      orders: list.map((o, i) => ({ ...o, paid: Boolean(marks[i]) })).sort((a, b) => b.date.localeCompare(a.date)),
+      orders: list.map((o, i) => ({ ...o, paid: Boolean(marks[i]), unlock: unlocks[i] })).sort((a, b) => b.date.localeCompare(a.date)),
       messages: messages.sort((a, b) => b.date.localeCompare(a.date)),
     });
   }
@@ -302,7 +329,14 @@ async function orders(req, env) {
     if (!/^3I-[A-Z0-9]{4,10}$/.test(orderId)) return json({ error: 'Bad order ID.' }, 400);
     if (body.paid) await env.DATA.put('paid:' + orderId, new Date().toISOString());
     else await env.DATA.delete('paid:' + orderId);
-    return json({ ok: true, orderId, paid: Boolean(body.paid) });
+    // an Audio Converter plan: unlock (or lock again) the Roblox account named in the order
+    const order = await env.DATA.get('order:' + orderId, 'json');
+    let unlock = null, warning = null;
+    if (order && PLANS[order.item]) {
+      try { unlock = await setGrant(env, order, Boolean(body.paid)); }
+      catch (e) { warning = 'Payment saved, but the Audio Converter was not unlocked: ' + e.message; }
+    }
+    return json({ ok: true, orderId, paid: Boolean(body.paid), unlock, warning });
   }
   return json({ error: 'Method not allowed.' }, 405);
 }
@@ -332,7 +366,180 @@ async function robloxPassOn(url, init) {
   return json({ error: `Roblox ${res.status}: ${detail}${hint}` }, res.status >= 500 ? 502 : res.status);
 }
 
-async function robloxAudio(req, path) {
+// ---------- Audio Converter plans ----------
+
+class LookupRefusal extends Error {}
+
+// username -> {id, name}; public lookup, no key involved. Roblox often answers Cloudflare with 429,
+// so roproxy (as for the live stats) is the fallback
+async function lookupUser(username) {
+  if (!/^\w{3,20}$/.test(username)) throw new LookupRefusal("That doesn't look like a Roblox username.");
+  for (const host of ['users.roblox.com', 'users.roproxy.com']) {
+    try {
+      const res = await fetch(`https://${host}/v1/usernames/users`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()).data || [];
+      if (!data.length) throw new LookupRefusal(`No Roblox user named "${username}".`);
+      return { id: data[0].id, name: data[0].name };
+    } catch (e) { if (e instanceof LookupRefusal) throw e; /* try the next host */ }
+  }
+  throw new Error("Couldn't look up that username right now.");
+}
+
+// grants stack: each one starts when the previous one ends (or when it was confirmed, if later)
+function planUntil(sub) {
+  let until = 0;
+  for (const g of (sub && sub.grants) || []) until = Math.max(until, Date.parse(g.paidAt)) + g.days * DAY;
+  return until ? new Date(until).toISOString() : null;
+}
+
+// the plan order was placed while logged in, so it carries the Discord account it unlocks
+async function setGrant(env, order, paid) {
+  if (!/^\d{5,25}$/.test(String(order.discordId || ''))) throw new Error('this order has no Discord account.');
+  const creator = 'discord:' + order.discordId;
+  const sub = (await env.DATA.get('sub:' + creator, 'json')) || { grants: [] };
+  sub.grants = sub.grants.filter((g) => g.orderId !== order.orderId);
+  if (paid) {
+    sub.grants.push({ orderId: order.orderId, days: PLANS[order.item], paidAt: new Date().toISOString() });
+    sub.grants.sort((a, b) => a.paidAt.localeCompare(b.paidAt));
+    await env.DATA.put('grant:' + order.orderId, JSON.stringify({ creator }));
+  } else {
+    await env.DATA.delete('grant:' + order.orderId);
+  }
+  await env.DATA.put('sub:' + creator, JSON.stringify(sub));
+  return { creator, until: planUntil(sub) };
+}
+
+async function planStatus(env, creator) {
+  const until = planUntil(await env.DATA.get('sub:' + creator, 'json'));
+  const used = Number(await env.DATA.get('uses:' + creator)) || 0;
+  const active = Boolean(until && Date.parse(until) > Date.now());
+  return { creator, active, until: active ? until : null, used, free: FREE_UPLOADS, left: active ? null : Math.max(0, FREE_UPLOADS - used) };
+}
+
+// ---------- Discord login (for the Audio Converter) ----------
+// Settings (wrangler.jsonc vars + a Cloudflare secret): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET.
+// The Discord app's redirect must be https://3iaw.com/api/auth/callback. Only the "identify" scope is used:
+// the site learns the Discord user ID, username and avatar, nothing else.
+const SESSION_DAYS = 30;
+const REDIRECT_URI = 'https://3iaw.com/api/auth/callback';
+
+function cookie(req, name) {
+  const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+const setCookie = (name, value, maxAge) =>
+  `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+const randomId = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+async function sessionOf(req, env) {
+  const sid = cookie(req, 'sid');
+  if (!/^[0-9a-f]{64}$/.test(sid)) return null;
+  return env.DATA.get('session:' + sid, 'json');
+}
+
+async function auth(req, env, path) {
+  const url = new URL(req.url);
+  if (path === '/api/auth/discord') {
+    if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET) return json({ error: 'Discord login is not set up yet.' }, 503);
+    const state = randomId(16);
+    const to = new URL('https://discord.com/oauth2/authorize');
+    to.search = new URLSearchParams({ client_id: env.DISCORD_CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI, scope: 'identify', state, prompt: 'none' });
+    return new Response(null, { status: 302, headers: { Location: to.toString(), 'Set-Cookie': setCookie('oauth_state', state, 600) } });
+  }
+  if (path === '/api/auth/callback') {
+    const back = (q) => new Response(null, { status: 302, headers: { Location: '/audio' + q, 'Set-Cookie': setCookie('oauth_state', '', 0) } });
+    const code = url.searchParams.get('code');
+    if (!code || !url.searchParams.get('state') || url.searchParams.get('state') !== cookie(req, 'oauth_state')) return back('?login=failed');
+    try {
+      const tok = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: env.DISCORD_CLIENT_ID, client_secret: env.DISCORD_CLIENT_SECRET, grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI }),
+      });
+      if (!tok.ok) throw new Error('token ' + tok.status);
+      const { access_token } = await tok.json();
+      const me = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: 'Bearer ' + access_token } });
+      if (!me.ok) throw new Error('user ' + me.status);
+      const u = await me.json();
+      const sid = randomId(32);
+      const user = { id: String(u.id), name: u.global_name || u.username, username: u.username, avatar: u.avatar || null };
+      await env.DATA.put('session:' + sid, JSON.stringify(user), { expirationTtl: SESSION_DAYS * 86400 });
+      const res = back('?login=ok');
+      res.headers.append('Set-Cookie', setCookie('sid', sid, SESSION_DAYS * 86400));
+      return res;
+    } catch (e) {
+      console.error('discord login', e);
+      return back('?login=failed');
+    }
+  }
+  if (path === '/api/auth/me') {
+    const user = await sessionOf(req, env);
+    if (!user) return json({ user: null, ready: Boolean(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) });
+    return json({ user, plan: await planStatus(env, 'discord:' + user.id), ready: true });
+  }
+  if (path === '/api/auth/logout') {
+    if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+    const sid = cookie(req, 'sid');
+    if (/^[0-9a-f]{64}$/.test(sid)) await env.DATA.delete('session:' + sid);
+    return json({ ok: true }, 200, { 'Set-Cookie': setCookie('sid', '', 0) });
+  }
+  return json({ error: 'Not found.' }, 404);
+}
+
+// a plan order from the Audio Converter: like the order form, but tied to the logged-in Discord account
+async function planOrder(req, env) {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  if (req.headers.get('sec-fetch-site') !== 'same-origin') return json({ error: 'Not allowed.' }, 403);
+  const user = await sessionOf(req, env);
+  if (!user) return json({ error: 'Log in with Discord first.', needLogin: true }, 401);
+  let b;
+  try { b = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+  const order = {
+    item: field(b.plan, 60),
+    payment: field(b.payment, 20),
+    email: field(b.email, 120).toLowerCase(),
+    transactionId: field(b.transactionId, 40),
+    username: '@' + user.username,
+    discordId: user.id,
+    discordName: user.name,
+    notes: field(b.notes, 500),
+  };
+  if (!PLANS[order.item]) return json({ error: 'Pick a plan.' }, 400);
+  if (!['bKash', 'Nagad'].includes(order.payment)) return json({ error: 'Pick bKash or Nagad.' }, 400);
+  if (!EMAIL_RE.test(order.email)) return json({ error: 'Enter a correct email address.' }, 400);
+  if (!order.transactionId) return json({ error: 'Enter the transaction ID from your receipt.' }, 400);
+  order.price = '৳' + PLAN_PRICES[order.item].toLocaleString('en-US') + ' (' + order.payment + ')';
+
+  let orderId;
+  for (let i = 0; i < 5; i++) {
+    const rand = crypto.getRandomValues(new Uint8Array(6));
+    orderId = '3I-' + Array.from(rand, (x) => '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'[x % 34]).join('');
+    if (!(await env.DATA.get('order:' + orderId))) break;
+  }
+  order.orderId = orderId;
+  order.date = new Date().toISOString();
+  await env.DATA.put('order:' + orderId, JSON.stringify(order));
+  await notifyOwner(env, 'New plan order ' + orderId + ': ' + order.item + ' (' + order.price + ')', [
+    'New Audio Converter plan on 3iaw.com',
+    '',
+    'Order ID:        ' + orderId,
+    'Plan:            ' + order.item + ' (' + PLANS[order.item] + ' days)',
+    'Price:           ' + order.price,
+    'Transaction ID:  ' + order.transactionId,
+    'Discord:         ' + order.discordName + ' (@' + user.username + ', ID ' + user.id + ')',
+    'Email:           ' + order.email,
+    'Notes:           ' + (order.notes || '-'),
+    '',
+    'Check the ' + order.payment + ' payment, then press "Confirm payment" at https://3iaw.com/reviews-admin.html.',
+    "That unlocks unlimited uploads for this Discord account; the days start when you confirm.",
+  ], order.email).catch((e) => console.error('plan email', e));
+  return json({ ok: true, orderId });
+}
+
+async function robloxAudio(req, env, path) {
   // fetch() from this site's pages sends Sec-Fetch-Site: same-origin; this keeps other sites from using the relay
   if (req.headers.get('sec-fetch-site') !== 'same-origin') return json({ error: 'Not allowed.' }, 403);
   const url = new URL(req.url);
@@ -341,22 +548,8 @@ async function robloxAudio(req, path) {
     if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
     let body;
     try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
-    const username = String(body.username || '').trim();
-    if (!/^\w{3,20}$/.test(username)) return json({ error: "That doesn't look like a Roblox username." }, 400);
-    // public lookup, no key involved; Roblox often answers Cloudflare with 429, so roproxy (as for the live stats) is the fallback
-    let data = null;
-    for (const host of ['users.roblox.com', 'users.roproxy.com']) {
-      try {
-        const res = await fetch(`https://${host}/v1/usernames/users`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
-        });
-        if (res.ok) { data = (await res.json()).data || []; break; }
-      } catch { /* try the next host */ }
-    }
-    if (!data) return json({ error: "Couldn't look up that username. Enter your user ID instead." }, 502);
-    if (!data.length) return json({ error: `No Roblox user named "${username}".` }, 404);
-    return json({ id: data[0].id, name: data[0].name });
+    try { return json(await lookupUser(String(body.username || '').trim())); }
+    catch (e) { return json({ error: e instanceof LookupRefusal ? e.message : "Couldn't look up that username. Enter your user ID instead." }, e instanceof LookupRefusal ? 404 : 502); }
   }
 
   const key = (req.headers.get('x-roblox-key') || '').trim();
@@ -375,11 +568,22 @@ async function robloxAudio(req, path) {
     let meta;
     try { meta = JSON.parse(String(form.get('request') || '')); } catch { return json({ error: 'Bad request.' }, 400); }
     if (!(file instanceof File) || file.size > MAX_UPLOAD || meta.assetType !== 'Audio') return json({ error: 'Bad request.' }, 400);
+    // uploads need a Discord login; the free uploads and plans are counted per Discord account
+    const user = await sessionOf(req, env);
+    if (!user) return json({ error: 'Log in with Discord to upload.', needLogin: true }, 401);
+    const creator = 'discord:' + user.id;
+    const plan = await planStatus(env, creator);
+    if (!plan.active && plan.left <= 0) {
+      return json({ error: `You've used your ${FREE_UPLOADS} free uploads. Get a plan for unlimited uploads.`, needPlan: true, plan }, 402);
+    }
     const out = new FormData();
     // a plain text field: sent as a Blob it becomes a file part, and Roblox answers "Request body cannot be empty"
     out.append('request', JSON.stringify(meta));
     out.append('fileContent', new File([file], 'audio.mp3', { type: 'audio/mpeg' }));
-    return robloxPassOn(ROBLOX_ASSETS + '/assets', { method: 'POST', headers: auth, body: out });
+    const res = await robloxPassOn(ROBLOX_ASSETS + '/assets', { method: 'POST', headers: auth, body: out });
+    // only an upload Roblox accepted counts
+    if (res.ok) await env.DATA.put('uses:' + creator, String(plan.used + 1));
+    return res;
   }
   if (path === '/api/roblox/operation') {
     const id = url.searchParams.get('id') || '';
@@ -400,7 +604,9 @@ async function robloxAudio(req, path) {
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname;
-    if (path.startsWith('/api/roblox/')) return robloxAudio(req, path);
+    if (path.startsWith('/api/roblox/')) return robloxAudio(req, env, path);
+    if (path.startsWith('/api/auth/')) return auth(req, env, path);
+    if (path === '/api/plan-order') return planOrder(req, env);
     if (path === '/api/roblox-stats') return robloxStats();
     if (path === '/api/reviews') return reviews(req, env);
     if (path === '/api/order') return placeOrder(req, env);

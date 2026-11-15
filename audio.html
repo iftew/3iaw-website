@@ -72,6 +72,20 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         Roblox account <span class="ac-dot" id="navDot"></span>
       </button>
+      <button type="button" role="tab" id="tab-plans" aria-controls="panel-plans" aria-selected="false" tabindex="-1" data-panel="plans">
+        <span class="ac-num">04</span>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Plans
+      </button>
+    </div>
+    <!-- Discord login: who is logged in and how many free uploads are left -->
+    <div class="ac-me" id="me">
+      <button type="button" class="ac-discord" id="loginBtn"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.3 5.3A17 17 0 0 0 15 4l-.5 1.1a15.6 15.6 0 0 0-5 0L9 4a17 17 0 0 0-4.3 1.3C2 9.4 1.3 13.4 1.6 17.3a17.2 17.2 0 0 0 5.3 2.7l1.1-1.8a11 11 0 0 1-1.8-.9l.4-.3a12.2 12.2 0 0 0 10.6 0l.4.3c-.6.4-1.2.7-1.8.9l1.1 1.8a17.1 17.1 0 0 0 5.3-2.7c.4-4.5-.7-8.5-2.9-12zM8.7 14.9c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1zm6.6 0c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1z"/></svg>Log in with Discord</button>
+      <div class="ac-me-user" id="meUser" hidden>
+        <img id="meAvatar" alt="" width="34" height="34">
+        <div><b id="meName"></b><span id="mePlan"></span></div>
+        <button type="button" class="ac-logout" id="logoutBtn" aria-label="Log out">Log out</button>
+      </div>
     </div>
     <div class="ac-side-stats">
       <div><b id="sTotal">0</b><span>Uploaded</span></div>
@@ -172,6 +186,47 @@
         <div id="jobs"></div>
         <p class="ac-note">This list is saved in this browser only. Converted files stay until you close or reload the page, so download them if you want to keep them.</p>
       </div>
+    </div>
+
+    <!-- 04 plans -->
+    <div class="ac-panel" role="tabpanel" id="panel-plans" aria-labelledby="tab-plans" hidden>
+      <span class="ac-crumb">// 04 &mdash; Plans</span>
+      <h2 class="ac-title">Unlimited uploads</h2>
+      <p class="ac-sub">Every Discord account gets 2 free uploads to Roblox. A plan gives your Discord account unlimited uploads. Converting and downloading are always free.</p>
+
+      <div class="ac-card">
+        <div class="ac-card-head"><span>Your plan</span><span class="ac-link static"><span class="ac-dot" id="planDot"></span><span id="planText">Not logged in</span></span></div>
+        <p class="ac-plan-line" id="planLine">Log in with Discord to see your free uploads and buy a plan.</p>
+        <button type="button" class="btn btn-solid ac-go" id="planLogin">Log in with Discord</button>
+      </div>
+
+      <form class="ac-card ac-buy" id="buyForm" novalidate>
+        <div class="ac-card-head"><span>Get a plan</span><span>bKash &middot; Nagad</span></div>
+        <div class="ac-plans" id="planPick" role="radiogroup" aria-label="Plan">
+          <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 1 Month" data-bdt="2000" checked><b>1 Month</b><span class="ac-price">&#2547;2,000</span><span>30 days of unlimited uploads</span></label>
+          <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 3 Months" data-bdt="5000"><b>3 Months</b><span class="ac-price">&#2547;5,000</span><span>90 days &middot; save &#2547;1,000</span></label>
+          <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 1 Year" data-bdt="10000"><b>1 Year</b><span class="ac-price">&#2547;10,000</span><span>365 days &middot; best value</span></label>
+        </div>
+
+        <div class="ac-label">Pay with</div>
+        <div class="ac-seg" id="payPick">
+          <button type="button" data-v="bKash" class="on">bKash</button>
+          <button type="button" data-v="Nagad">Nagad</button>
+        </div>
+        <!-- the same number as the order form on the homepage (index.html #shopData) -->
+        <div class="ac-pay" id="payBox" data-number="01978664169">
+          <p>Send <b id="payAmount">&#2547;2,000</b> with <b id="payMethod">bKash</b> Send Money to this number, then enter the transaction ID below.</p>
+          <span class="ac-number"><b>01978664169</b><button type="button" class="ac-btn" id="copyNumber">Copy</button></span>
+        </div>
+
+        <div class="field-row ac-row">
+          <label class="field"><span>Transaction ID</span><input type="text" id="buyTxn" maxlength="40" placeholder="from your receipt" autocomplete="off"></label>
+          <label class="field"><span>Email</span><input type="email" id="buyEmail" maxlength="120" placeholder="for your receipt" autocomplete="email"></label>
+        </div>
+        <button class="btn btn-solid ac-go" type="submit" id="buyBtn">Place order</button>
+        <p class="form-status err" id="buyErr" role="alert"></p>
+        <p class="ac-small">Your plan starts when the payment is confirmed, usually within a few hours. If you already have a plan, the new days are added to the end of it.</p>
+      </form>
     </div>
 
     <!-- 03 roblox account -->

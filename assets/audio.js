@@ -45,7 +45,12 @@ async function roblox(path, opts = {}) {
   try { r = await fetch('/api/roblox/' + path, { method: opts.method || 'GET', body: opts.body, headers }); }
   catch { throw new Error("Couldn't reach 3iaw.com. Check your internet and try again."); }
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body.error || ('Roblox error ' + r.status));
+  if (!r.ok) {
+    // needLogin / needPlan: the upload limit (Discord login, 2 free uploads, then a plan)
+    const e = new Error(body.error || ('Roblox error ' + r.status));
+    e.needLogin = Boolean(body.needLogin); e.needPlan = Boolean(body.needPlan);
+    throw e;
+  }
   return body;
 }
 
@@ -243,8 +248,10 @@ async function run(job, file) {
     else job.stage = 'ready';
   } catch (e) {
     Object.assign(job, { failedStage: job.stage, stage: 'error', error: e.message || String(e) });
+    if (e.needLogin || e.needPlan) limitHit(e);
   }
   saveJobs(); render();
+  if (job.autoUpload) refreshMe();
 }
 
 // ---------- form ----------
@@ -310,6 +317,9 @@ $('#acForm').onsubmit = (e) => {
   const err = $('#formErr'); err.textContent = '';
   if (!file) { err.textContent = 'Choose an audio file first.'; return; }
   if (autoUpload.checked && !connected()) { err.textContent = 'Connect your Roblox account first, or untick upload.'; openSettings(); return; }
+  // uploading needs a Discord login, and a plan after the free uploads; converting alone is always free
+  if (autoUpload.checked && me.ready && !me.user) { err.textContent = 'Log in with Discord to upload, or untick upload.'; showPanel('plans'); return; }
+  if (autoUpload.checked && me.plan && !me.plan.active && me.plan.left <= 0) { err.textContent = "You've used your 2 free uploads. Get a plan, or untick upload."; showPanel('plans'); return; }
   if (file.size > 300 * 1024 * 1024) { err.textContent = 'That file is too big (over 300 MB).'; return; }
   const job = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -481,8 +491,8 @@ $('#jobs').addEventListener('click', async (e) => {
     try { await navigator.clipboard.writeText(j.assetId); toast('Asset ID copied'); } catch { toast('Copy failed: ' + j.assetId); }
   } else if (act === 'upload') {
     if (!connected()) { openSettings(); return; }
-    try { await upload(j); } catch (ex) { Object.assign(j, { failedStage: 'upload', stage: 'error', error: ex.message }); }
-    saveJobs(); render();
+    try { await upload(j); } catch (ex) { Object.assign(j, { failedStage: 'upload', stage: 'error', error: ex.message }); if (ex.needLogin || ex.needPlan) limitHit(ex); }
+    saveJobs(); render(); refreshMe();
   } else if (act === 'check') {
     if (!sessionKey) { openSettings(); return; }
     await checkModeration(j); toast('Status: ' + (j.moderation || 'unknown'));
@@ -497,6 +507,95 @@ document.querySelectorAll('#filter button').forEach((b) => {
 });
 window.addEventListener('beforeunload', (e) => { if (jobs.some((j) => ['convert', 'upload'].includes(j.stage))) e.preventDefault(); });
 
+// ---------- Discord login + plans ----------
+let me = { user: null, plan: null, ready: true };
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+function planWords(p) {
+  if (!p) return '';
+  if (p.active) return 'Unlimited until ' + fmtDate(p.until);
+  return p.left + ' of ' + p.free + ' free uploads left';
+}
+function renderMe() {
+  const u = me.user;
+  $('#loginBtn').hidden = Boolean(u);
+  $('#loginBtn').disabled = !me.ready;
+  if (!me.ready) $('#loginBtn').lastChild.nodeValue = 'Discord login coming soon';
+  $('#meUser').hidden = !u;
+  $('#planLogin').hidden = Boolean(u) || !me.ready;
+  $('#buyBtn').textContent = u ? 'Place order' : 'Log in with Discord to buy';
+  $('#planDot').classList.toggle('on', Boolean(me.plan && me.plan.active));
+  if (u) {
+    $('#meName').textContent = u.name;
+    $('#mePlan').textContent = planWords(me.plan);
+    const av = $('#meAvatar');
+    av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+    $('#planText').textContent = me.plan && me.plan.active ? 'Unlimited' : 'Free';
+    $('#planLine').textContent = '@' + u.username + ': ' + planWords(me.plan) + '.';
+  } else {
+    $('#planText').textContent = 'Not logged in';
+    $('#planLine').textContent = me.ready ? 'Log in with Discord to see your free uploads and buy a plan.' : 'Discord login is being set up. Converting and downloading work already.';
+  }
+}
+async function refreshMe() {
+  try { me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); } catch { /* keep what we had */ }
+  renderMe();
+}
+// after the free uploads: say why, and open the Plans section
+function limitHit(e) { toast(e.message); showPanel('plans'); refreshMe(); }
+const login = () => { location.href = '/api/auth/discord'; };
+$('#loginBtn').onclick = login;
+$('#planLogin').onclick = login;
+$('#logoutBtn').onclick = async () => {
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+  me = { user: null, plan: null, ready: me.ready }; renderMe(); toast('Logged out');
+};
+// back from Discord: say how it went and tidy the address bar
+(() => {
+  const q = new URLSearchParams(location.search).get('login');
+  if (!q) return;
+  toast(q === 'ok' ? 'Logged in with Discord' : "Discord login didn't work. Try again.");
+  history.replaceState(null, '', location.pathname);
+})();
+
+// buy a plan: bKash / Nagad, like the order form, tied to the logged-in Discord account
+let payWith = 'bKash';
+function showPay() {
+  const picked = document.querySelector('#planPick input:checked');
+  $('#payAmount').textContent = '৳' + Number(picked.dataset.bdt).toLocaleString('en-US');
+  $('#payMethod').textContent = payWith;
+  document.querySelectorAll('#payPick button').forEach((b) => b.classList.toggle('on', b.dataset.v === payWith));
+}
+document.querySelectorAll('#payPick button').forEach((b) => { b.onclick = () => { payWith = b.dataset.v; showPay(); }; });
+$('#planPick').onchange = showPay;
+showPay();
+$('#copyNumber').onclick = async () => {
+  const n = $('#payBox').dataset.number;
+  try { await navigator.clipboard.writeText(n); toast(payWith + ' number copied'); } catch { toast(n); }
+};
+$('#buyForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const err = $('#buyErr'); err.textContent = ''; err.className = 'form-status err';
+  if (!me.user) { if (me.ready) login(); else err.textContent = 'Discord login is being set up. Try again soon.'; return; }
+  const txn = $('#buyTxn').value.trim(), email = $('#buyEmail').value.trim();
+  if (!txn) { err.textContent = 'Enter the transaction ID from your receipt.'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { err.textContent = 'Enter a correct email address.'; return; }
+  const btn = $('#buyBtn'); btn.disabled = true;
+  try {
+    const r = await fetch('/api/plan-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: document.querySelector('#planPick input:checked').value, payment: payWith, transactionId: txn, email }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { if (d.needLogin) { me.user = null; renderMe(); } throw new Error(d.error || 'Could not place the order. Try again.'); }
+    $('#buyTxn').value = '';
+    err.className = 'form-status ok';
+    err.textContent = 'Order ' + d.orderId + ' placed. Your plan starts as soon as the payment is confirmed.';
+  } catch (ex) { err.textContent = ex.message; }
+  finally { btn.disabled = false; }
+};
+
 renderConn();
+renderMe();
+refreshMe();
 render();
 jobs.filter((j) => j.assetId && j.moderation === 'Reviewing').forEach(checkModeration);

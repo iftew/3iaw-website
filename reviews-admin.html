@@ -27,6 +27,7 @@
   .r > div{flex:1; min-width:0;}
   .r b{color:var(--white);}
   .meta{font-size:.82rem; color:var(--grey-dim); overflow-wrap:anywhere;}
+  .meta.unlocked{color:var(--ok);}
   .text{margin:.35rem 0 0; color:var(--grey-light); white-space:pre-line; overflow-wrap:anywhere;}
   .tag{display:inline-block; font-size:.75rem; font-weight:600; border-radius:999px; padding:.05rem .5rem; margin-left:.4rem; border:1px solid var(--line); color:var(--grey-mid);}
   .tag.paid{color:var(--ok); border-color:rgba(127,209,164,.45);}
@@ -130,6 +131,9 @@
         body.appendChild(title);
         body.appendChild(el('div', 'meta', (o.price || '') + ' · ' + (o.payment || '') + (robux ? ' · Check the game pass sale on Roblox' : ' · Transaction ID: ' + (o.transactionId || '(none)'))));
         if (o.ugc) body.appendChild(el('div', 'meta', 'UGC: ' + o.ugc));
+        // Audio Converter plans: which Discord account it's for, and (once confirmed) until when it's unlocked
+        if (o.discordId) body.appendChild(el('div', 'meta', 'Discord: ' + (o.discordName || '') + ' (' + o.username + ', ID ' + o.discordId + ')'));
+        if (o.unlock && o.unlock.until) body.appendChild(el('div', 'meta unlocked', 'Unlimited uploads until ' + new Date(o.unlock.until).toLocaleDateString()));
         body.appendChild(el('div', 'meta', (o.username || '') + ' · ' + (o.email || '') + ' · ' + new Date(o.date).toLocaleString()));
         if (o.notes) body.appendChild(el('p', 'text', o.notes));
         row.appendChild(body);
@@ -140,7 +144,12 @@
         btn.addEventListener('click', function(){
           btn.disabled = true;
           call('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: o.orderId, paid: !o.paid }) })
-            .then(function(){ loadOrders(); })
+            .then(function(d){
+              loadOrders();
+              // plan orders: say what happened to the Discord account, after the list has reloaded
+              const note = d.warning || (d.unlock ? (d.paid ? 'Unlocked until ' + new Date(d.unlock.until).toLocaleDateString() : 'Plan days taken back') : '');
+              if (note) setTimeout(function(){ setStatus('ordersStatus', note, d.warning ? 'err' : 'ok'); }, 900);
+            })
             .catch(function(e){ btn.disabled = false; setStatus('ordersStatus', 'Not saved: ' + e.message, 'err'); });
         });
         actions.appendChild(btn);
