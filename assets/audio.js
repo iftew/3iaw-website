@@ -180,16 +180,17 @@ async function convert(job, file) {
   const buf = await decode(file);
   prog(0, 0.1)(1);
   const start = Math.min(Math.floor((job.trimStart || 0) * RATE), buf.length);
-  const maxIn = Math.floor(MAX_SECONDS * job.speed * RATE);
+  const maxSec = Math.min(MAX_SECONDS, job.maxSeconds || MAX_SECONDS);
+  const maxIn = Math.floor(maxSec * job.speed * RATE);
   const inLen = Math.min(buf.length - start, maxIn);
   if (inLen < RATE * 0.2) throw new Error('Nothing left to convert after the start time.');
-  job.notes = buf.length - start > maxIn ? ['Cut to 6:40 (400 seconds), the longest the converter makes.'] : [];
+  job.notes = buf.length - start > maxIn ? [`Cut to ${maxSec} seconds (Max Duration).`] : [];
   // copies, so the effects never change the decoded original
   let L = buf.getChannelData(0).slice(start, start + inLen);
   let R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice(start, start + inLen);
   if (Math.abs(job.speed - 1) > 1e-3 || Math.abs(job.pitch) > 1e-3) [L, R] = await stretch(L, R, job, prog(0.1, 0.5));
   amplify(L, R, job.gain);
-  // cut before the song's own end (400 s maximum): a 3 s fade; otherwise a short 1.2 s one just to clean the tail
+  // cut before the song's own end (Max Duration, up to 400 s): a 3 s fade; otherwise a short 1.2 s one just to clean the tail
   const cutShort = buf.length - start > maxIn;
   fadeEdges(L, R, cutShort ? 3 : 1.2);
   const blob = await encodeMp3(L, R, prog(0.6, 0.4));
@@ -256,11 +257,13 @@ async function run(job, file) {
 
 // ---------- form ----------
 let file = null, mode = 'tempo', filter = 'all';
-const speed = $('#speed'), pitch = $('#pitch'), gain = $('#gain');
+// pitch has no control on the page: a hidden field the presets set; mode comes from the preset too
+const speed = $('#speed'), pitch = $('#pitch'), gain = $('#gain'), maxDur = $('#maxDur');
 const showSpeed = () => { $('#speedVal').textContent = (+speed.value).toFixed(2) + 'x'; };
-const showPitch = () => { $('#pitchVal').textContent = (pitch.value > 0 ? '+' : '') + pitch.value + ' st'; };
-const showGain = () => { const t = (gain.value > 0 ? '+' : '') + gain.value + ' dB'; $('#gainVal').textContent = t; $('#speedGain').textContent = t; };
-function setMode(v) { mode = v; document.querySelectorAll('#mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
+const showPitch = () => {};
+const showGain = () => { $('#gainVal').textContent = (gain.value > 0 ? '+' : '') + gain.value + ' dB'; };
+const showMax = () => { $('#maxVal').textContent = maxDur.value + 's'; };
+function setMode(v) { mode = v; }
 function markPreset() {
   document.querySelectorAll('.ac-fx button').forEach((b) => b.classList.toggle('on',
     +b.dataset.s === +speed.value && +b.dataset.p === +pitch.value && b.dataset.m === mode));
@@ -269,13 +272,13 @@ function markPreset() {
 // one-line summary next to "02 Sound", so the settings can be folded away
 function summarize() {
   const fx = document.querySelector('.ac-fx button.on');
-  const p = +pitch.value, g = +gain.value;
+  const g = +gain.value;
   $('#soundSummary').textContent = [fx ? fx.dataset.name : 'Custom', (+speed.value).toFixed(2) + 'x',
-    (p > 0 ? '+' : '') + p + ' st', (g > 0 ? '+' : '') + g + ' dB'].join(' · ');
+    (g > 0 ? '+' : '') + g + ' dB', maxDur.value + 's'].join(' · ');
 }
 speed.oninput = () => { showSpeed(); markPreset(); };
-pitch.oninput = () => { showPitch(); markPreset(); };
 gain.oninput = () => { showGain(); summarize(); };
+maxDur.oninput = () => { showMax(); summarize(); };
 const soundToggle = $('#soundToggle'), soundBox = $('#soundBox');
 soundToggle.onclick = () => {
   const open = soundBox.hidden;
@@ -284,8 +287,6 @@ soundToggle.onclick = () => {
   soundToggle.setAttribute('aria-expanded', String(open));
 };
 document.querySelectorAll('[data-speed]').forEach((b) => { b.onclick = () => { speed.value = b.dataset.speed; showSpeed(); markPreset(); }; });
-document.querySelectorAll('[data-pv]').forEach((b) => { b.onclick = () => { pitch.value = b.dataset.pv; showPitch(); markPreset(); }; });
-document.querySelectorAll('#mode button').forEach((b) => { b.onclick = () => { setMode(b.dataset.v); markPreset(); }; });
 document.querySelectorAll('.ac-fx button').forEach((b) => {
   b.onclick = () => { speed.value = b.dataset.s; pitch.value = b.dataset.p; setMode(b.dataset.m); showSpeed(); showPitch(); markPreset(); };
 });
@@ -324,7 +325,7 @@ $('#acForm').onsubmit = (e) => {
   const job = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name: ($('#assetName').value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 50),
-    source: file.name, speed: +speed.value, mode, pitch: +pitch.value, gain: +gain.value,
+    source: file.name, speed: +speed.value, mode, pitch: +pitch.value, gain: +gain.value, maxSeconds: +maxDur.value,
     trimStart: Math.max(0, +$('#trimStart').value || 0), autoUpload: autoUpload.checked,
     stage: 'queued', progress: 0, createdAt: Date.now(),
   };
@@ -438,8 +439,7 @@ function badge(j) {
 function jobHTML(j) {
   const busy = ['queued', 'convert', 'upload'].includes(j.stage);
   const out = outputs.get(j.id);
-  const fx = [(+j.speed).toFixed(2) + 'x ' + (j.mode === 'pitch' ? '(pitch follows)' : '(pitch kept)')];
-  if (j.pitch) fx.push('pitch ' + (j.pitch > 0 ? '+' : '') + j.pitch + ' st');
+  const fx = [(+j.speed).toFixed(2) + 'x'];
   if (j.gain) fx.push((j.gain > 0 ? '+' : '') + j.gain + ' dB');
   if (j.outputSeconds) fx.push(fmtTime(j.outputSeconds));
   if (j.outputBytes) fx.push((j.outputBytes / 1e6).toFixed(1) + ' MB');
