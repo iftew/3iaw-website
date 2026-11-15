@@ -519,3 +519,31 @@
 .ac-term-name{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .ac-panels.duo .ac-term-link{display:none;}
 .ac-panels.duo .ac-type button{font-size:.64rem; letter-spacing:.04em; gap:.35rem;}
+
+/* sidebar: a tab with its own count or status dot does not also need the open-tab dot */
+.ac-nav button[aria-selected="true"]:has(.ac-dot, .ac-count)::after{display:none;}
+
+/* header: language switch + Discord account menu next to the Audio Converter tab */
+#siteHeader .brand-wrap{display:flex; align-items:center; gap:.7rem;}
+.ac-hdr{display:flex; align-items:center; gap:.5rem;}
+.ac-lang{display:flex; padding:3px; border:1px solid var(--line); border-radius:999px; background:var(--panel);}
+.ac-lang button{font:600 .68rem var(--font-mono); letter-spacing:.06em; color:var(--grey-dim); background:none; border:0; border-radius:999px; padding:.3rem .6rem; cursor:pointer; transition:color .15s ease, background .15s ease;}
+.ac-lang button:hover{color:var(--white);}
+.ac-lang button.on{color:var(--void); background:var(--white);}
+.ac-hdr-login{display:inline-flex; align-items:center; gap:.4rem; font:600 .74rem var(--font-body); color:#fff; background:#5865f2; border:0; border-radius:999px; padding:.42rem .8rem; cursor:pointer;}
+.ac-hdr-login:hover{background:#4752c4;}
+.ac-hdr-login[hidden], .ac-user[hidden]{display:none;}
+.ac-user{position:relative;}
+.ac-av-btn{display:block; width:34px; height:34px; padding:0; border-radius:50%; overflow:hidden; border:1px solid var(--line); background:var(--surface); cursor:pointer; transition:box-shadow .2s ease;}
+.ac-av-btn:hover, .ac-av-btn[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(255,255,255,.12);}
+.ac-av-btn img{display:block; width:100%; height:100%; object-fit:cover;}
+.ac-menu{position:absolute; top:calc(100% + 10px); left:0; z-index:60; min-width:220px; border:1px solid var(--line); border-radius:12px; background:#121216; box-shadow:0 20px 50px -10px rgba(0,0,0,.8); overflow:hidden; animation:acRise .2s var(--ease) both;}
+.ac-menu[hidden]{display:none;}
+.ac-menu-who{padding:.8rem 1rem; border-bottom:1px solid var(--line-soft);}
+.ac-menu-who b{display:block; color:var(--white); font-size:.92rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ac-menu-who span{display:block; margin-top:.15rem; font:.64rem var(--font-mono); text-transform:uppercase; letter-spacing:.1em; color:var(--grey-dim);}
+.ac-menu button{display:flex; align-items:center; gap:.7rem; width:100%; padding:.75rem 1rem; border:0; background:none; color:var(--grey-light); font:500 .9rem var(--font-body); cursor:pointer; text-align:left;}
+.ac-menu button:hover, .ac-menu button:focus-visible{background:rgba(255,255,255,.05); color:var(--white); outline:none;}
+html.lang-bn body{font-family:"Hind Siliguri", var(--font-body), sans-serif;}
+html.lang-bn .ac-welcome, html.lang-bn .ac-title, html.lang-bn .ac-tile-v.big, html.lang-bn .ac-prof-id > b{font-family:"Hind Siliguri", var(--font-display), sans-serif; letter-spacing:0;}
+@media (max-width:560px){ .ac-lang button{padding:.28rem .45rem;} .ac-hdr-login{padding:.4rem .6rem;} }

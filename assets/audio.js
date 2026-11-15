@@ -3,6 +3,7 @@
 // Roblox calls go through the Worker (/api/roblox/*) because Roblox doesn't allow them from browsers.
 // The visitor's API key stays in this browser and is sent only with those calls; the Worker doesn't store it.
 import { SoundTouch, SimpleFilter } from 'https://cdn.jsdelivr.net/npm/soundtouchjs@0.3.0/dist/soundtouch.js';
+import { startI18n, setLang } from './audio-i18n.js';
 
 const LAME_URL = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
 const RATE = 44100;
@@ -576,7 +577,6 @@ function renderMe() {
   $('#meUser').hidden = !u;
   $('#planLogin').hidden = Boolean(u) || !me.ready;
   $('#buyBtn').textContent = u ? 'Place order' : 'Log in with Discord to buy';
-  $('#planDot').classList.toggle('on', Boolean(me.plan && me.plan.active));
   if (u) {
     $('#meName').textContent = u.name;
     $('#mePlan').textContent = planWords(me.plan);
@@ -584,6 +584,7 @@ function renderMe() {
     av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
   }
   renderDash();
+  if ($('#hdrUser')) renderHdr();
 }
 
 // ---------- dashboard: welcome line, four account cards, uploads-left banner ----------
@@ -674,15 +675,11 @@ function renderDash() {
   };
   chip($('#pDiscord'), 'Discord Account', u && u.name);
   chip($('#pRoblox'), 'Roblox Account', on ? (prof && (prof.username || prof.name)) || cfg.creatorId : '');
-  $('#planText').textContent = active ? 'Unlimited' : 'Free';
-  $('#planLine').textContent = active ? 'Until ' + fmtDate(p.until) : (p ? p.left + ' of ' + p.free + ' free uploads left' : '2 free uploads');
-  $('#pUpgrade').hidden = active;
   $('#profileCard').classList.toggle('active', active);
   countTo($('#pTotal'), jobs.length);
   countTo($('#pMonth'), jobs.filter((j) => j.createdAt >= monthStart.getTime()).length);
   countTo($('#pUploaded'), jobs.filter((j) => j.assetId).length);
 }
-$('#pUpgrade').onclick = () => $('#plans').scrollIntoView({ behavior: 'smooth', block: 'start' });
 $('#tUpgrade').onclick = () => showPlans();
 $('#quotaBtn').onclick = () => showPlans();
 $('#tDiscordPill').onclick = () => { if (!me.user && me.ready) login(); };
@@ -767,8 +764,47 @@ $('#buyForm').onsubmit = async (e) => {
   finally { btn.disabled = false; }
 };
 
+// ---------- header: EN / Bangla switch and the Discord account menu (next to the Audio Converter tab) ----------
+(() => {
+  const wrap = document.querySelector('#siteHeader .brand-wrap');
+  if (!wrap) return;
+  const box = document.createElement('div');
+  box.className = 'ac-hdr';
+  box.id = 'acHdr';
+  box.innerHTML = `
+    <div class="ac-lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button><button type="button" data-lang="bn">বাং</button>
+    </div>
+    <button type="button" class="ac-hdr-login" id="hdrLogin" hidden><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.3 5.3A17 17 0 0 0 15 4l-.5 1.1a15.6 15.6 0 0 0-5 0L9 4a17 17 0 0 0-4.3 1.3C2 9.4 1.3 13.4 1.6 17.3a17.2 17.2 0 0 0 5.3 2.7l1.1-1.8a11 11 0 0 1-1.8-.9l.4-.3a12.2 12.2 0 0 0 10.6 0l.4.3c-.6.4-1.2.7-1.8.9l1.1 1.8a17.1 17.1 0 0 0 5.3-2.7c.4-4.5-.7-8.5-2.9-12z"/></svg>Log in</button>
+    <div class="ac-user" id="hdrUser" hidden>
+      <button type="button" class="ac-av-btn" id="hdrAvBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="hdrMenu" aria-label="Account menu"><img id="hdrAv" alt=""></button>
+      <div class="ac-menu" id="hdrMenu" role="menu" hidden>
+        <div class="ac-menu-who"><b id="hdrName" data-no-i18n></b><span id="hdrSub" data-no-i18n></span></div>
+        <button type="button" role="menuitem" id="hdrLogout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Logout</button>
+      </div>
+    </div>`;
+  wrap.appendChild(box);
+  box.querySelectorAll('[data-lang]').forEach((b) => { b.onclick = () => setLang(b.dataset.lang); });
+  const btn = $('#hdrAvBtn'), menu = $('#hdrMenu');
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = (e) => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (open) $('#hdrLogout').focus(); };
+  document.addEventListener('click', (e) => { if (!box.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { close(); btn.focus(); } });
+  $('#hdrLogout').onclick = () => { close(); $('#logoutBtn').click(); };
+  $('#hdrLogin').onclick = () => { if (me.ready) login(); };
+})();
+function renderHdr() {
+  const u = me.user;
+  $('#hdrUser').hidden = !u;
+  $('#hdrLogin').hidden = Boolean(u) || !me.ready;
+  if (!u) return;
+  $('#hdrAv').src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+  $('#hdrName').textContent = u.name;
+  $('#hdrSub').textContent = '@' + u.username;
+}
 renderConn();
 renderMe();
+startI18n();
 refreshMe();
 render();
 jobs.filter((j) => j.assetId && j.moderation === 'Reviewing').forEach(checkModeration);
