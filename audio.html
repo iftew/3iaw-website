@@ -125,9 +125,9 @@
           <div class="ac-chips ac-fx ac-presets">
             <button type="button" data-s="2.1" data-m="pitch" data-p="0" data-name="Slow">Slow <em>2.1x</em></button>
 <button type="button" data-s="2.3" data-m="tempo" data-p="0" data-name="Default"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
-<button type="button" data-s="2.5" data-m="pitch" data-p="0" data-name="Fast">Fast <em>2.5x</em></button>
-<button type="button" data-s="2.7" data-m="pitch" data-p="0" data-name="Faster">Faster <em>2.7x</em></button>
-<button type="button" data-s="2.9" data-m="pitch" data-p="0" data-name="Ultra">Ultra <em>2.9x</em></button>
+<button type="button" data-s="2.5" data-m="pitch" data-p="0" data-name="Fast" data-gain="-10">Fast <em>2.5x</em></button>
+<button type="button" data-s="2.7" data-m="pitch" data-p="0" data-name="Faster" data-gain="-12">Faster <em>2.7x</em></button>
+<button type="button" data-s="2.9" data-m="pitch" data-p="0" data-name="Ultra" data-gain="-14">Ultra <em>2.9x</em></button>
           </div>
 
           <!-- pitch isn't shown: presets set it (always 0) and whether pitch follows speed -->
@@ -137,7 +137,7 @@
           <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
 
           <label class="ac-label" for="gain">Amplify (dB) <em id="gainVal">-8 dB</em></label>
-          <input type="range" id="gain" min="-10" max="15" step="1" value="-8">
+          <input type="range" id="gain" min="-14" max="15" step="1" value="-8">
 
           <label class="ac-label" for="maxDur">Max Duration (seconds) <em id="maxVal">400s</em></label>
           <input type="range" id="maxDur" min="10" max="400" step="5" value="400">
@@ -252,6 +252,33 @@
 </section>
 
 <div class="ac-toast" id="toast" role="status" aria-live="polite"></div>
+
+
+<!-- Preset-specific amplifier settings -->
+<script>
+(() => {
+  const presets = document.querySelector(".ac-presets");
+  const gain = document.getElementById("gain");
+  const gainVal = document.getElementById("gainVal");
+
+  if (!presets || !gain) return;
+
+  presets.addEventListener("click", (event) => {
+    const preset = event.target.closest("button[data-gain]");
+    if (!preset || !presets.contains(preset)) return;
+
+    const db = Number(preset.dataset.gain);
+    if (!Number.isFinite(db)) return;
+
+    gain.value = String(db);
+    if (gainVal) gainVal.textContent = `${db} dB`;
+
+    // Notify the converter's existing UI/state listeners.
+    gain.dispatchEvent(new Event("input", { bubbles: true }));
+    gain.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+})();
+</script>
 
 </main>
 
