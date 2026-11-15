@@ -1,4 +1,72 @@
 /* Audio Converter page (/audio). Uses the site's colours and fonts from site.css. */
+
+/* ---------- console layout: sidebar + one panel at a time ---------- */
+.ac-console{display:grid; grid-template-columns:calc(220px + 6vw) minmax(0,1fr); gap:0; padding:0; min-height:calc(100vh - 70px); border-bottom:1px solid var(--line-soft);}
+.ac-side{position:sticky; top:70px; align-self:start; height:calc(100vh - 70px); display:flex; flex-direction:column; gap:1.2rem;
+  padding:2rem 1rem 1.4rem 6vw; border-right:1px solid var(--line-soft); background:rgba(10,10,12,.82); box-sizing:border-box; min-width:0;}
+.ac-side-title{font:.7rem var(--font-mono); text-transform:uppercase; letter-spacing:.1em; color:var(--grey-dim); padding:0 .7rem;}
+.ac-nav{display:flex; flex-direction:column; gap:.25rem;}
+.ac-nav button{display:flex; align-items:center; gap:.7rem; width:100%; text-align:left; padding:.7rem .75rem; border:0; border-radius:10px; background:transparent;
+  font:500 .95rem var(--font-body); color:var(--grey-mid); cursor:pointer; transition:background .15s ease, color .15s ease;}
+.ac-nav button:hover{color:var(--white); background:rgba(255,255,255,.03);}
+.ac-nav button[aria-selected="true"]{color:var(--white); background:var(--surface); font-weight:600;}
+.ac-nav svg{flex:none; opacity:.85;}
+.ac-num{font:.68rem var(--font-mono); color:var(--grey-dim); width:1.2rem;}
+.ac-nav button[aria-selected="true"] .ac-num{color:var(--white);}
+.ac-count{margin-left:auto; font:.68rem var(--font-mono); color:var(--grey-mid); border:1px solid var(--line); border-radius:999px; padding:.05rem .45rem;}
+.ac-nav .ac-dot{margin-left:auto;}
+.ac-side-stats{margin-top:auto; display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line-soft); border:1px solid var(--line-soft); border-radius:12px; overflow:hidden;}
+.ac-side-stats div{background:var(--panel); padding:.7rem .75rem;}
+.ac-side-stats b{display:block; font:600 1.15rem var(--font-mono); color:var(--white); line-height:1.2;}
+.ac-side-stats b.ok{color:var(--ok);} .ac-side-stats b.rev{color:#f5c451;} .ac-side-stats b.bad{color:#f08a8a;}
+.ac-side-stats span{font:.62rem var(--font-mono); text-transform:uppercase; letter-spacing:.07em; color:var(--grey-dim);}
+
+.ac-main{padding:2.4rem 6vw 4rem 3rem; min-width:0; background:rgba(10,10,12,.6); scroll-margin-top:80px;}
+.ac-panel{max-width:860px;}
+.ac-crumb{display:block; font:500 .74rem var(--font-mono); text-transform:uppercase; letter-spacing:.08em; color:var(--grey-light); margin-bottom:.5rem;}
+.ac-title{margin:0; font:600 clamp(1.9rem, 3.4vw, 2.5rem)/1.1 var(--font-display); letter-spacing:-.035em; color:var(--white);}
+.ac-sub{margin:.5rem 0 1.6rem; color:var(--grey-dim); font-size:.95rem; max-width:62ch;}
+
+/* numbered steps inside the convert card: 01 Source, 02 Sound, 03 Upload */
+.ac-step-head{display:flex; align-items:center; gap:.6rem; margin:1.5rem 0 .8rem; font:.74rem var(--font-mono); text-transform:uppercase; letter-spacing:.08em; color:var(--grey-light);}
+.ac-card-head + .ac-step-head{margin-top:.2rem;}
+.ac-step-head b{font-weight:500; color:var(--grey-dim);}
+.ac-step-head i{flex:1; height:1px; background:linear-gradient(90deg, var(--line), transparent);}
+.ac-step-dot{width:12px; height:12px; border-radius:50%; border:1px solid var(--line); background:var(--surface); box-shadow:inset 0 0 0 3px var(--panel);}
+.ac-summary{font:500 .74rem var(--font-mono); color:var(--white); text-transform:none; letter-spacing:0;}
+.ac-toggle{font:600 .78rem var(--font-body); color:var(--white); background:none; border:0; padding:.2rem .3rem; cursor:pointer; text-transform:none; letter-spacing:0;}
+.ac-toggle::after{content:""; display:inline-block; width:6px; height:6px; margin-left:.4rem; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2px) rotate(-135deg);}
+.ac-toggle[aria-expanded="false"]::after{transform:translateY(-4px) rotate(45deg);}
+.ac-box{border:1px solid var(--line-soft); border-radius:12px; padding:.2rem 1rem 1.1rem; background:rgba(255,255,255,.015);}
+.ac-box > .ac-label:first-child{margin-top:.9rem;}
+.ac-drop svg{display:block; margin:0 auto .5rem; color:var(--grey-mid);}
+.ac-flow{display:flex; align-items:center; gap:.5rem; margin-top:1.1rem;}
+.ac-flow span{font:.7rem var(--font-mono); text-transform:uppercase; letter-spacing:.07em; color:var(--grey-light); border:1px solid var(--line); border-radius:6px; padding:.3rem .55rem;}
+.ac-flow span.off{opacity:.35; text-decoration:line-through;}
+.ac-flow i{width:14px; height:1px; background:var(--line);}
+.ac-link.static{cursor:default;}
+.ac-guide{margin:0; padding-left:1.2rem; line-height:1.75; font-size:.9rem; color:var(--grey-mid);}
+#panel-account .ac-dialog-body{padding:0 0 1rem;}
+#panel-account .ac-dialog-foot{margin:0 -1.3rem -1.3rem; padding:.9rem 1.3rem;}
+#panel-library .ac-card-head{flex-wrap:wrap;}
+#panel-library .ac-filter{margin-left:auto;}
+#panel-library #jobs .ac-job{background:var(--surface);}
+
+@media (max-width:900px){
+  .ac-console{grid-template-columns:1fr; min-height:0;}
+  .ac-side{position:static; height:auto; padding:1.4rem 6vw 1rem; border-right:0; border-bottom:1px solid var(--line-soft);}
+  .ac-nav{flex-direction:row; overflow-x:auto;}
+  .ac-nav button{flex:1; justify-content:center; padding:.65rem .5rem; font-size:.85rem; white-space:nowrap;}
+  .ac-nav .ac-num{display:none;}
+  .ac-nav .ac-count, .ac-nav .ac-dot{margin-left:0;}
+  .ac-side-stats{grid-template-columns:repeat(4,1fr); margin-top:0;}
+  .ac-main{padding:1.8rem 6vw 3rem;}
+}
+@media (max-width:560px){
+  .ac-nav button svg{display:none;}
+  .ac-side-title{display:none;}
+  .ac-summary{display:none;}
+}
 .ac-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; margin:0 0 1.6rem;}
 .ac-stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:1rem 1.1rem;}
 .ac-stat b{display:block; font:600 1.6rem var(--font-mono); color:var(--white); line-height:1.2;}

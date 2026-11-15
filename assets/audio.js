@@ -257,10 +257,25 @@ function setMode(v) { mode = v; document.querySelectorAll('#mode button').forEac
 function markPreset() {
   document.querySelectorAll('#fx button').forEach((b) => b.classList.toggle('on',
     +b.dataset.s === +speed.value && +b.dataset.p === +pitch.value && b.dataset.m === mode));
+  summarize();
+}
+// one-line summary next to "02 Sound", so the settings can be folded away
+function summarize() {
+  const fx = document.querySelector('#fx button.on');
+  const p = +pitch.value, g = +gain.value;
+  $('#soundSummary').textContent = [fx ? fx.textContent : 'Custom', (+speed.value).toFixed(2) + 'x',
+    (p > 0 ? '+' : '') + p + ' st', (g > 0 ? '+' : '') + g + ' dB'].join(' · ');
 }
 speed.oninput = () => { showSpeed(); markPreset(); };
 pitch.oninput = () => { showPitch(); markPreset(); };
-gain.oninput = showGain;
+gain.oninput = () => { showGain(); summarize(); };
+const soundToggle = $('#soundToggle'), soundBox = $('#soundBox');
+soundToggle.onclick = () => {
+  const open = soundBox.hidden;
+  soundBox.hidden = !open;
+  soundToggle.textContent = open ? 'Hide' : 'Edit';
+  soundToggle.setAttribute('aria-expanded', String(open));
+};
 document.querySelectorAll('[data-speed]').forEach((b) => { b.onclick = () => { speed.value = b.dataset.speed; showSpeed(); markPreset(); }; });
 document.querySelectorAll('[data-pv]').forEach((b) => { b.onclick = () => { pitch.value = b.dataset.pv; showPitch(); markPreset(); }; });
 document.querySelectorAll('#mode button').forEach((b) => { b.onclick = () => { setMode(b.dataset.v); markPreset(); }; });
@@ -283,7 +298,11 @@ drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); };
 
 const autoUpload = $('#autoUpload');
-const syncGo = () => { $('#goBtn').textContent = autoUpload.checked ? 'Convert & upload' : 'Convert only'; };
+const syncGo = () => {
+  $('#goBtn').textContent = autoUpload.checked ? 'Convert & upload' : 'Convert only';
+  $('#flowUpload').classList.toggle('off', !autoUpload.checked);
+  $('#flowCheck').classList.toggle('off', !autoUpload.checked);
+};
 autoUpload.onchange = syncGo; syncGo();
 
 $('#acForm').onsubmit = (e) => {
@@ -303,13 +322,43 @@ $('#acForm').onsubmit = (e) => {
   const f = file;
   setFile(null); fileIn.value = ''; $('#assetName').value = '';
   run(job, f);
+  showPanel('library');
 };
 
+// ---------- console panels (sidebar) ----------
+const navTabs = [...document.querySelectorAll('.ac-nav [role="tab"]')];
+function showPanel(name, focus) {
+  navTabs.forEach((t) => {
+    const on = t.dataset.panel === name;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    $('#panel-' + t.dataset.panel).hidden = !on;
+    if (on && focus) t.focus();
+  });
+  // on a phone the panel is below the menu, so bring its top into view
+  if (window.matchMedia('(max-width: 900px)').matches) $('.ac-main').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+navTabs.forEach((t, i) => {
+  t.onclick = () => { if (t.dataset.panel === 'account') openSettings(); else showPanel(t.dataset.panel); };
+  t.onkeydown = (e) => {
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = navTabs[(i + step + navTabs.length) % navTabs.length];
+    if (next.dataset.panel === 'account') openSettings(); else showPanel(next.dataset.panel, true);
+    next.focus();
+  };
+});
+
 // ---------- settings ----------
-const dlg = $('#settings');
+// the Roblox account panel replaces the old pop-up; "closing" it goes back to Convert
+const dlg = { close: () => showPanel('convert') };
 function renderConn() {
-  $('#connDot').classList.toggle('on', connected());
-  $('#connText').textContent = connected() ? (cfg.creatorType === 'group' ? 'Group ' : 'User ') + cfg.creatorId : 'Connect Roblox';
+  const on = connected();
+  const who = on ? (cfg.creatorType === 'group' ? 'Group ' : 'User ') + cfg.creatorId : '';
+  ['#connDot', '#navDot', '#acctDot'].forEach((s) => $(s).classList.toggle('on', on));
+  $('#connText').textContent = on ? who : 'Connect Roblox';
+  $('#acctText').textContent = on ? 'Connected: ' + who : 'Not connected';
 }
 const syncCreatorLbl = () => {
   const g = $('#creatorType').value === 'group';
@@ -324,7 +373,8 @@ function openSettings() {
   $('#creatorId').value = cfg.creatorId || '';
   $('#remember').checked = store.get('ac.key', '') !== '' || !sessionKey;
   syncCreatorLbl();
-  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  showPanel('account');
+  if (!sessionKey) $('#apiKey').focus({ preventScroll: true });
 }
 $('#creatorType').onchange = syncCreatorLbl;
 $('#openSettings').onclick = openSettings;
@@ -409,13 +459,14 @@ function matches(j) {
 let lastHTML = '';
 function render() {
   const up = jobs.filter((j) => j.assetId);
+  $('#navCount').textContent = jobs.length;
   $('#sTotal').textContent = up.length;
   $('#sOk').textContent = up.filter((j) => j.moderation === 'Approved').length;
   $('#sRev').textContent = up.filter((j) => j.moderation === 'Reviewing').length;
   $('#sBad').textContent = up.filter((j) => j.moderation === 'Rejected').length;
   const shown = jobs.filter(matches);
   const html = shown.length ? shown.map(jobHTML).join('')
-    : `<div class="ac-empty">${jobs.length ? 'Nothing here with this filter.' : 'No audio yet. Choose a file on the left to start.'}</div>`;
+    : `<div class="ac-empty">${jobs.length ? 'Nothing here with this filter.' : 'No audio yet. Choose a file in Convert to start.'}</div>`;
   if (html === lastHTML) return;
   // rebuilding would stop a preview that's playing; it re-renders on the next change instead
   if ([...document.querySelectorAll('#jobs audio')].some((a) => !a.paused) && !shown.some((j) => ['convert', 'upload'].includes(j.stage))) return;
