@@ -310,6 +310,18 @@
     speed.addEventListener("change", updateRobloxSpeedRecommendation);
   }
 
+  // Start every fresh page load with the Default preset selected.
+  const defaultPreset = presets && presets.querySelector('button[data-name="Default"]');
+  if (defaultPreset) {
+    presets.querySelectorAll("button").forEach((button) => {
+      button.classList.toggle("on", button === defaultPreset);
+      button.setAttribute("aria-pressed", button === defaultPreset ? "true" : "false");
+    });
+
+    // Apply the same preset action used when a visitor clicks Default.
+    defaultPreset.click();
+  }
+
   updateRobloxSpeedRecommendation();
 })();
 </script>
