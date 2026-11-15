@@ -71,8 +71,8 @@
         <div class="ac-box" id="soundBox">
           <div class="ac-label">Presets</div>
           <div class="ac-chips ac-fx ac-presets">
-            <button type="button" data-s="2.1" data-m="pitch" data-p="0" data-name="Slow">Slow <em>2.1x</em></button>
-<button type="button" data-s="2.3" data-m="tempo" data-p="0" data-name="Default"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
+            <button type="button" data-s="2.1" data-m="pitch" data-p="0" data-name="Slow" data-gain="-6">Slow <em>2.1x</em></button>
+<button type="button" class="on" aria-pressed="true" data-s="2.3" data-m="tempo" data-p="0" data-name="Default" data-gain="-8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
 <button type="button" data-s="2.5" data-m="pitch" data-p="0" data-name="Fast" data-gain="-10">Fast <em>2.5x</em></button>
 <button type="button" data-s="2.7" data-m="pitch" data-p="0" data-name="Faster" data-gain="-12">Faster <em>2.7x</em></button>
 <button type="button" data-s="2.9" data-m="pitch" data-p="0" data-name="Ultra" data-gain="-14">Ultra <em>2.9x</em></button>
@@ -258,17 +258,43 @@
     speed.addEventListener("change", updateRobloxSpeedRecommendation);
   }
 
-  // Start every fresh page load with the Default preset selected.
-  const defaultPreset = presets && presets.querySelector('button[data-name="Default"]');
-  if (defaultPreset) {
+  // Initialize Default after the converter's own JavaScript has attached
+  // its preset handlers. This makes the real preset action run on every fresh load.
+  function selectDefaultPreset() {
+    if (!presets) return;
+    const defaultPreset = presets.querySelector('button[data-name="Default"]');
+    if (!defaultPreset) return;
+
+    // Trigger the same code path as a user clicking Default (sets speed/mode).
+    defaultPreset.click();
+
+    // Enforce the selected state after the converter's click handler runs.
     presets.querySelectorAll("button").forEach((button) => {
-      button.classList.toggle("on", button === defaultPreset);
-      button.setAttribute("aria-pressed", button === defaultPreset ? "true" : "false");
+      const selected = button === defaultPreset;
+      button.classList.toggle("on", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
     });
 
-    // Apply the same preset action used when a visitor clicks Default.
-    defaultPreset.click();
+    // Ensure the matching gain is applied and displayed.
+    if (gain) {
+      gain.value = defaultPreset.dataset.gain || "-8";
+      if (gainVal) gainVal.textContent = `${gain.value} dB`;
+      gain.dispatchEvent(new Event("input", { bubbles: true }));
+      gain.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    updateRobloxSpeedRecommendation();
   }
+
+  // Wait until page scripts have initialized; also handle scripts injected late.
+  if (document.readyState === "complete") {
+    window.setTimeout(selectDefaultPreset, 0);
+  } else {
+    window.addEventListener("load", () => window.setTimeout(selectDefaultPreset, 0), { once: true });
+  }
+
+  // Re-apply on browser back/forward restoration.
+  window.addEventListener("pageshow", () => window.setTimeout(selectDefaultPreset, 0));
 
   updateRobloxSpeedRecommendation();
 })();
