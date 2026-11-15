@@ -546,6 +546,21 @@ function renderMe() {
 }
 
 // ---------- dashboard: welcome line, four account cards, uploads-left banner ----------
+// the connected Roblox account's name and headshot, fetched once per account and kept for a day
+const profiles = store.get('ac.profiles', {});
+const profileLoading = new Set();
+function robloxProfile() {
+  const k = cfg.creatorType + ':' + cfg.creatorId, p = profiles[k];
+  if (p && Date.now() - p.at < 86400000) return p;
+  if (!profileLoading.has(k)) {
+    profileLoading.add(k);
+    roblox(`profile?type=${encodeURIComponent(cfg.creatorType)}&id=${encodeURIComponent(cfg.creatorId)}`, { key: false })
+      .then((d) => { if (d.name) { profiles[k] = { ...d, at: Date.now() }; store.set('ac.profiles', profiles); renderDash(); } })
+      .catch(() => {})
+      .finally(() => profileLoading.delete(k));
+  }
+  return p || null;
+}
 // numbers count up to their new value instead of jumping
 function countTo(el, to) {
   const from = +el.dataset.n || 0;
@@ -571,7 +586,12 @@ function renderDash() {
   if (u) av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
   // Roblox
   const on = connected();
-  $('#tRoblox').textContent = on ? (cfg.creatorType === 'group' ? 'Group ' : '') + cfg.creatorId : 'Not connected';
+  const prof = on ? robloxProfile() : null;
+  $('#tRoblox').textContent = on ? (prof && prof.name) || (cfg.creatorType === 'group' ? 'Group ' : '') + cfg.creatorId : 'Not connected';
+  $('#tRoblox').title = prof && prof.username ? '@' + prof.username + ' · ID ' + cfg.creatorId : (on ? 'ID ' + cfg.creatorId : '');
+  const rav = $('#tRobloxAv');
+  rav.hidden = !(prof && prof.avatar);
+  if (prof && prof.avatar && rav.src !== prof.avatar) rav.src = prof.avatar;
   $('#tRobloxPill').textContent = on ? 'Linked' : 'Connect';
   $('#tRobloxPill').classList.toggle('on', on);
   // conversions (this browser)

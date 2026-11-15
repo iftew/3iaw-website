@@ -389,6 +389,24 @@ async function lookupUser(username) {
   throw new Error("Couldn't look up that username right now.");
 }
 
+// a user's or group's name and picture; roblox.com first, roproxy when Roblox answers Cloudflare with 429
+async function robloxGet(path) {
+  for (const host of ['roblox.com', 'roproxy.com']) {
+    try {
+      const res = await fetch(path.replace('{host}', host), { cf: { cacheTtl: 3600, cacheEverything: true } });
+      if (res.ok) return await res.json();
+    } catch { /* try the next host */ }
+  }
+  return null;
+}
+async function robloxProfile(id, group) {
+  const [info, thumb] = await Promise.all(group
+    ? [robloxGet(`https://groups.{host}/v1/groups/${id}`), robloxGet(`https://thumbnails.{host}/v1/groups/icons?groupIds=${id}&size=150x150&format=Png`)]
+    : [robloxGet(`https://users.{host}/v1/users/${id}`), robloxGet(`https://thumbnails.{host}/v1/users/avatar-headshot?userIds=${id}&size=150x150&format=Png`)]);
+  const pic = thumb && thumb.data && thumb.data[0] && thumb.data[0].state === 'Completed' ? thumb.data[0].imageUrl : null;
+  return { name: info ? (group ? info.name : (info.displayName || info.name)) : null, username: info && !group ? info.name : null, avatar: pic };
+}
+
 // grants stack: each one starts when the previous one ends (or when it was confirmed, if later)
 function planUntil(sub) {
   let until = 0;
@@ -550,6 +568,14 @@ async function robloxAudio(req, env, path) {
     try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
     try { return json(await lookupUser(String(body.username || '').trim())); }
     catch (e) { return json({ error: e instanceof LookupRefusal ? e.message : "Couldn't look up that username. Enter your user ID instead." }, e instanceof LookupRefusal ? 404 : 502); }
+  }
+
+  // the connected account's name and picture for the dashboard card (public data, no key)
+  if (path === '/api/roblox/profile') {
+    const id = url.searchParams.get('id') || '';
+    const group = url.searchParams.get('type') === 'group';
+    if (!/^\d{1,20}$/.test(id)) return json({ error: 'Bad id.' }, 400);
+    return json(await robloxProfile(id, group));
   }
 
   const key = (req.headers.get('x-roblox-key') || '').trim();
