@@ -288,7 +288,11 @@ soundToggle.onclick = () => {
 };
 document.querySelectorAll('[data-speed]').forEach((b) => { b.onclick = () => { speed.value = b.dataset.speed; showSpeed(); markPreset(); }; });
 document.querySelectorAll('.ac-fx button').forEach((b) => {
-  b.onclick = () => { speed.value = b.dataset.s; pitch.value = b.dataset.p; setMode(b.dataset.m); showSpeed(); showPitch(); markPreset(); };
+  b.onclick = () => {
+    speed.value = b.dataset.s; pitch.value = b.dataset.p; setMode(b.dataset.m);
+    if (b.dataset.gain !== undefined) { gain.value = b.dataset.gain; showGain(); }
+    showSpeed(); showPitch(); markPreset();
+  };
 });
 markPreset();
 
