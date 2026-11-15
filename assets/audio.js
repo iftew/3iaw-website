@@ -449,7 +449,7 @@ function jobHTML(j) {
     <div class="ac-steps">${steps(j)}</div>
     ${busy ? `<div class="ac-bar"><i style="width:${j.progress || 0}%"></i></div>` : ''}
     <div class="ac-meta">${fx.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
-    ${j.assetId ? `<div class="ac-asset"><b>rbxassetid://${esc(j.assetId)}</b><button type="button" class="ac-btn" data-act="copyid">Copy ID</button><button type="button" class="ac-btn" data-act="copy">Copy link</button></div>` : ''}
+    ${j.assetId ? `<div class="ac-asset"><a href="https://create.roblox.com/store/asset/${esc(j.assetId)}" target="_blank" rel="noopener">create.roblox.com/store/asset/${esc(j.assetId)}</a><button type="button" class="ac-btn" data-act="copyid">Copy ID</button><button type="button" class="ac-btn" data-act="copy">Copy link</button></div>` : ''}
     ${(j.notes || []).map((n) => `<div class="ac-warn">${esc(n)}</div>`).join('')}
     ${j.error ? `<div class="ac-err">${esc(j.error)}</div>` : ''}
     ${j.moderationError ? `<div class="ac-err">${esc(j.moderationError)}</div>` : ''}
@@ -488,8 +488,8 @@ $('#jobs').addEventListener('click', async (e) => {
   const j = jobs.find((x) => x.id === b.closest('.ac-job').dataset.id); if (!j) return;
   const act = b.dataset.act;
   if (act === 'copy') {
-    const link = 'rbxassetid://' + j.assetId;
-    try { await navigator.clipboard.writeText(link); toast('Copied ' + link); } catch { toast('Copy failed: ' + link); }
+    const link = 'https://create.roblox.com/store/asset/' + j.assetId;
+    try { await navigator.clipboard.writeText(link); toast('Link copied'); } catch { toast('Copy failed: ' + link); }
     return;
   }
   if (act === 'copyid') {
