@@ -1,6 +1,7 @@
 <!-- Body of /audio (Audio Converter). scripts/build-pages.ps1 wraps it in the site header and footer and writes audio.html.
      The converter runs in the visitor's browser (assets/audio.js); Roblox calls go through the Worker (/api/roblox/*).
-     Console layout: a sidebar picks one of three panels (Convert, Your audio, Roblox account). -->
+     Console layout: a sidebar picks one panel (Convert, Your audio, Roblox account, Plans, Tutorial);
+     the welcome line and the four account cards sit above every panel. -->
 <section class="ac-console grid-bg">
   <aside class="ac-side" aria-label="Audio Converter sections">
     <div class="ac-side-title">Audio Converter</div>
@@ -25,6 +26,11 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         Plans
       </button>
+      <button type="button" role="tab" id="tab-tutorial" aria-controls="panel-tutorial" aria-selected="false" tabindex="-1" data-panel="tutorial">
+        <span class="ac-num">05</span>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/><path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor"/></svg>
+        Tutorial
+      </button>
     </div>
     <!-- Discord login: who is logged in and how many free uploads are left -->
     <div class="ac-me" id="me">
@@ -44,16 +50,54 @@
   </aside>
 
   <div class="ac-main">
+    <!-- welcome + account cards, shown above every panel -->
+    <div class="ac-hello">
+      <h1 class="ac-welcome">Welcome<span id="helloName"></span><i>.</i></h1>
+      <p class="ac-sub">Convert audio and upload it to your Roblox account. Everything is processed in your own browser.</p>
+    </div>
+    <div class="ac-tiles" id="tiles">
+      <div class="ac-tile" style="--d:0">
+        <span class="ac-tile-k">Discord account</span>
+        <b class="ac-tile-v" id="tDiscord">Not linked</b>
+        <span class="ac-pill" id="tDiscordPill">Log in</span>
+        <span class="ac-tile-ico discord"><img id="tDiscordAv" alt="" hidden><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.3 5.3A17 17 0 0 0 15 4l-.5 1.1a15.6 15.6 0 0 0-5 0L9 4a17 17 0 0 0-4.3 1.3C2 9.4 1.3 13.4 1.6 17.3a17.2 17.2 0 0 0 5.3 2.7l1.1-1.8a11 11 0 0 1-1.8-.9l.4-.3a12.2 12.2 0 0 0 10.6 0l.4.3c-.6.4-1.2.7-1.8.9l1.1 1.8a17.1 17.1 0 0 0 5.3-2.7c.4-4.5-.7-8.5-2.9-12z"/></svg></span>
+      </div>
+      <div class="ac-tile" style="--d:1">
+        <span class="ac-tile-k">Roblox account</span>
+        <b class="ac-tile-v" id="tRoblox">Not connected</b>
+        <span class="ac-pill" id="tRobloxPill">Connect</span>
+        <span class="ac-tile-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 2.5l15.3 3.7-3.7 15.3L2.5 17.8 6.2 2.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="10" y="10" width="4" height="4" transform="rotate(14 12 12)" fill="currentColor"/></svg></span>
+      </div>
+      <div class="ac-tile" style="--d:2">
+        <span class="ac-tile-k">Total conversions</span>
+        <b class="ac-tile-v big" id="tTotal">0</b>
+        <span class="ac-tile-s" id="tMonth">0 this month</span>
+        <span class="ac-tile-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="ac-tile plan" style="--d:3">
+        <span class="ac-tile-k">Current plan</span>
+        <b class="ac-tile-v big" id="tPlan">Free</b>
+        <span class="ac-tile-s" id="tPlanSub">2 free uploads</span>
+        <button type="button" class="ac-upgrade" id="tUpgrade"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Upgrade plan</button>
+        <span class="ac-tile-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+      </div>
+    </div>
+
     <!-- 01 convert -->
     <div class="ac-panel" role="tabpanel" id="panel-convert" aria-labelledby="tab-convert">
       <span class="ac-crumb">// 01 &mdash; Convert</span>
-      <h1 class="ac-title">Roblox Audio Converter</h1>
-      <p class="ac-sub">Change an audio file's speed, pitch and volume, then upload it to your Roblox account. Everything is processed in your own browser.</p>
+      <h2 class="ac-title">Convert audio</h2>
 
       <form class="ac-card" id="acForm" novalidate>
         <div class="ac-card-head">
           <span>New conversion</span>
           <button type="button" class="ac-link" id="openSettings"><span class="ac-dot" id="connDot"></span><span id="connText">Connect Roblox</span></button>
+        </div>
+
+        <!-- uploads left on the free plan, or how long the plan runs -->
+        <div class="ac-quota" id="quota" hidden>
+          <div><b id="quotaMain"></b><span id="quotaSub"></span></div>
+          <button type="button" class="ac-upgrade solid" id="quotaBtn">Upgrade plan</button>
         </div>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>01</b> Source<i></i></div>
@@ -63,6 +107,7 @@
           <span>or click to choose one &middot; MP3, WAV, OGG, M4A, FLAC or a video file</span>
         </div>
         <input type="file" id="fileIn" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm" hidden>
+        <p class="ac-rights">Only upload audio you made or have permission to use. Roblox removes audio that breaks its copyright rules and can moderate your account.</p>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>02</b> Sound<i></i>
           <span class="ac-summary" id="soundSummary">Default &middot; 1.00x &middot; -8 dB &middot; 400s</span>
@@ -71,23 +116,18 @@
         <div class="ac-box" id="soundBox">
           <div class="ac-label">Presets</div>
           <div class="ac-chips ac-fx ac-presets">
-            <button type="button" data-s="2.1" data-m="pitch" data-p="0" data-name="Slow" data-gain="-6">Slow <em>2.1x</em></button>
-<button type="button" class="on" aria-pressed="true" data-s="2.3" data-m="pitch" data-p="0" data-name="Default" data-gain="-8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
-<button type="button" data-s="2.5" data-m="pitch" data-p="0" data-name="Fast" data-gain="-10">Fast <em>2.5x</em></button>
-<button type="button" data-s="2.7" data-m="pitch" data-p="0" data-name="Faster" data-gain="-12">Faster <em>2.7x</em></button>
-<button type="button" data-s="2.9" data-m="pitch" data-p="0" data-name="Ultra" data-gain="-14">Ultra <em>2.9x</em></button>
+            <button type="button" data-s="0.8" data-m="pitch" data-p="0" data-name="Slow">Slow <em>0.8x</em></button>
+            <button type="button" data-s="1" data-m="tempo" data-p="0" data-name="Default"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>1x</em></button>
+            <button type="button" data-s="1.25" data-m="pitch" data-p="0" data-name="Fast">Fast <em>1.25x</em></button>
+            <button type="button" data-s="1.5" data-m="pitch" data-p="0" data-name="Faster">Faster <em>1.5x</em></button>
+            <button type="button" data-s="2" data-m="pitch" data-p="0" data-name="Ultra">Ultra <em>2x</em></button>
           </div>
 
           <!-- pitch isn't shown: presets set it (always 0) and whether pitch follows speed -->
           <input type="hidden" id="pitch" value="0">
 
           <label class="ac-label" for="speed">Speed <em id="speedVal">1.00x</em></label>
-          <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
-          <div class="ac-speed-recommendation" id="speedRecommendation" role="status" aria-live="polite" style="margin-top:10px;padding:10px 12px;border:1px solid rgba(130,150,190,.28);border-radius:9px;font-size:13px;">
-            <strong>Recommended Roblox playback speed:</strong>
-            <span id="robloxSpeedRecommendation">0.99</span>
-            <span style="opacity:.7"> (estimated)</span>
-          </div>
+          <input type="range" id="speed" min="0.5" max="2" step="0.05" value="1">
 
           <label class="ac-label" for="gain">Amplify (dB) <em id="gainVal">-8 dB</em></label>
           <input type="range" id="gain" min="-14" max="15" step="1" value="-8">
@@ -112,7 +152,7 @@
     <div class="ac-panel" role="tabpanel" id="panel-library" aria-labelledby="tab-library" hidden>
       <span class="ac-crumb">// 02 &mdash; Your audio</span>
       <h2 class="ac-title">Your audio</h2>
-      <p class="ac-sub">Every conversion and upload, with its asset ID and Roblox's moderation result. Statuses refresh on their own.</p>
+      <p class="ac-sub">Every conversion and upload, with its asset link and Roblox's moderation result. Statuses refresh on their own.</p>
       <div class="ac-card">
         <div class="ac-card-head">
           <span>History</span>
@@ -138,12 +178,20 @@
         <button type="button" class="btn btn-solid ac-go" id="planLogin">Log in with Discord</button>
       </div>
 
+      <!-- shown instead of the buy form while a plan is running -->
+      <div class="ac-card ac-active" id="planActive" hidden>
+        <div class="ac-active-badge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <b>Your plan is active</b>
+        <p id="planActiveLine">Unlimited uploads.</p>
+        <p class="ac-small">You can buy another plan when this one ends.</p>
+      </div>
+
       <form class="ac-card ac-buy" id="buyForm" novalidate>
         <div class="ac-card-head"><span>Get a plan</span><span>bKash &middot; Nagad</span></div>
         <div class="ac-plans" id="planPick" role="radiogroup" aria-label="Plan">
           <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 1 Month" data-bdt="2000" checked><b>1 Month</b><span class="ac-price">&#2547;2,000</span><span>30 days of unlimited uploads</span></label>
           <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 3 Months" data-bdt="5000"><b>3 Months</b><span class="ac-price">&#2547;5,000</span><span>90 days &middot; save &#2547;1,000</span></label>
-          <label class="ac-plan"><input type="radio" name="plan" value="Audio Converter: 1 Year" data-bdt="10000"><b>1 Year</b><span class="ac-price">&#2547;10,000</span><span>365 days &middot; best value</span></label>
+          <label class="ac-plan best"><input type="radio" name="plan" value="Audio Converter: 1 Year" data-bdt="10000"><b>1 Year</b><span class="ac-price">&#2547;10,000</span><span>365 days &middot; best value</span></label>
         </div>
 
         <div class="ac-label">Pay with</div>
@@ -163,7 +211,7 @@
         </div>
         <button class="btn btn-solid ac-go" type="submit" id="buyBtn">Place order</button>
         <p class="form-status err" id="buyErr" role="alert"></p>
-        <p class="ac-small">Your plan starts when the payment is confirmed, usually within a few hours. If you already have a plan, the new days are added to the end of it.</p>
+        <p class="ac-small">Your plan starts when the payment is confirmed, usually within a few hours.</p>
       </form>
     </div>
 
@@ -201,101 +249,31 @@
         </form>
       </div>
     </div>
+
+    <!-- 05 tutorial: put the YouTube video ID (or link) in data-video -->
+    <div class="ac-panel" role="tabpanel" id="panel-tutorial" aria-labelledby="tab-tutorial" hidden>
+      <span class="ac-crumb">// 05 &mdash; Tutorial</span>
+      <h2 class="ac-title">How to use the converter</h2>
+      <p class="ac-sub">From an audio file to a sound playing in your Roblox game.</p>
+      <div class="ac-video" id="tutorialVideo" data-video="">
+        <div class="ac-video-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor"/></svg>
+          <span>Video coming soon</span>
+        </div>
+      </div>
+      <div class="ac-card ac-howto">
+        <div class="ac-card-head"><span>Step by step</span></div>
+        <ol class="ac-steps-list">
+          <li><b>Log in with Discord</b><span>Your account gets 2 free uploads. A plan gives unlimited uploads.</span></li>
+          <li><b>Connect Roblox</b><span>Create an Open Cloud API key with Assets read and write, and paste it in Roblox account.</span></li>
+          <li><b>Choose your audio</b><span>Use audio you made or have permission to use, or a track from Roblox's own audio library.</span></li>
+          <li><b>Pick a preset</b><span>Default keeps the sound as it is. Adjust Speed, Amplify and Max Duration if you need to.</span></li>
+          <li><b>Convert &amp; upload</b><span>The audio goes to your account and Roblox reviews it. Follow the status in Your audio.</span></li>
+          <li><b>Use it in your game</b><span>When it's approved, copy the link or ID and set it as a Sound's SoundId in Roblox Studio.</span></li>
+        </ol>
+      </div>
+    </div>
   </div>
 </section>
 
 <div class="ac-toast" id="toast" role="status" aria-live="polite"></div>
-
-
-
-<!-- Preset amplifier and Roblox playback-speed recommendations -->
-<script>
-(() => {
-  const presets = document.querySelector(".ac-presets");
-  const gain = document.getElementById("gain");
-  const gainVal = document.getElementById("gainVal");
-  const speed = document.getElementById("speed");
-  const recommendation = document.getElementById("robloxSpeedRecommendation");
-
-  // Calibration: the Default preset (2.3x) corresponds to Roblox playback speed 0.43.
-  const REFERENCE_CONVERSION_SPEED = 2.3;
-  const REFERENCE_ROBLOX_SPEED = 0.43;
-
-  function updateRobloxSpeedRecommendation() {
-    if (!speed || !recommendation) return;
-    const conversionSpeed = Number(speed.value);
-    if (!Number.isFinite(conversionSpeed) || conversionSpeed <= 0) return;
-
-    const suggested = REFERENCE_ROBLOX_SPEED *
-      (REFERENCE_CONVERSION_SPEED / conversionSpeed);
-
-    recommendation.textContent = suggested.toFixed(2);
-  }
-
-  if (presets) {
-    presets.addEventListener("click", (event) => {
-      const preset = event.target.closest("button");
-      if (!preset || !presets.contains(preset)) return;
-
-      // Apply the preset's dB value when one is specified.
-      if (preset.dataset.gain !== undefined && gain) {
-        const db = Number(preset.dataset.gain);
-        if (Number.isFinite(db)) {
-          gain.value = String(db);
-          if (gainVal) gainVal.textContent = `${db} dB`;
-          gain.dispatchEvent(new Event("input", { bubbles: true }));
-          gain.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      }
-
-      // Recalculate after the converter's preset handler updates the speed.
-      window.setTimeout(updateRobloxSpeedRecommendation, 0);
-    });
-  }
-
-  if (speed) {
-    speed.addEventListener("input", updateRobloxSpeedRecommendation);
-    speed.addEventListener("change", updateRobloxSpeedRecommendation);
-  }
-
-  // Initialize Default after the converter's own JavaScript has attached
-  // its preset handlers. This makes the real preset action run on every fresh load.
-  function selectDefaultPreset() {
-    if (!presets) return;
-    const defaultPreset = presets.querySelector('button[data-name="Default"]');
-    if (!defaultPreset) return;
-
-    // Trigger the same code path as a user clicking Default (sets speed/mode).
-    defaultPreset.click();
-
-    // Enforce the selected state after the converter's click handler runs.
-    presets.querySelectorAll("button").forEach((button) => {
-      const selected = button === defaultPreset;
-      button.classList.toggle("on", selected);
-      button.setAttribute("aria-pressed", selected ? "true" : "false");
-    });
-
-    // Ensure the matching gain is applied and displayed.
-    if (gain) {
-      gain.value = defaultPreset.dataset.gain || "-8";
-      if (gainVal) gainVal.textContent = `${gain.value} dB`;
-      gain.dispatchEvent(new Event("input", { bubbles: true }));
-      gain.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-
-    updateRobloxSpeedRecommendation();
-  }
-
-  // Wait until page scripts have initialized; also handle scripts injected late.
-  if (document.readyState === "complete") {
-    window.setTimeout(selectDefaultPreset, 0);
-  } else {
-    window.addEventListener("load", () => window.setTimeout(selectDefaultPreset, 0), { once: true });
-  }
-
-  // Re-apply on browser back/forward restoration.
-  window.addEventListener("pageshow", () => window.setTimeout(selectDefaultPreset, 0));
-
-  updateRobloxSpeedRecommendation();
-})();
-</script>

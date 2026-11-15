@@ -370,6 +370,7 @@ function renderConn() {
   ['#connDot', '#navDot', '#acctDot'].forEach((s) => $(s).classList.toggle('on', on));
   $('#connText').textContent = on ? who : 'Connect Roblox';
   $('#acctText').textContent = on ? 'Connected: ' + who : 'Not connected';
+  renderDash();
 }
 const syncCreatorLbl = () => {
   const g = $('#creatorType').value === 'group';
@@ -474,6 +475,7 @@ function render() {
   $('#sOk').textContent = up.filter((j) => j.moderation === 'Approved').length;
   $('#sRev').textContent = up.filter((j) => j.moderation === 'Reviewing').length;
   $('#sBad').textContent = up.filter((j) => j.moderation === 'Rejected').length;
+  renderDash();
   const shown = jobs.filter(matches);
   const html = shown.length ? shown.map(jobHTML).join('')
     : `<div class="ac-empty">${jobs.length ? 'Nothing here with this filter.' : 'No audio yet. Choose a file in Convert to start.'}</div>`;
@@ -540,7 +542,83 @@ function renderMe() {
     $('#planText').textContent = 'Not logged in';
     $('#planLine').textContent = me.ready ? 'Log in with Discord to see your free uploads and buy a plan.' : 'Discord login is being set up. Converting and downloading work already.';
   }
+  renderDash();
 }
+
+// ---------- dashboard: welcome line, four account cards, uploads-left banner ----------
+// numbers count up to their new value instead of jumping
+function countTo(el, to) {
+  const from = +el.dataset.n || 0;
+  el.dataset.n = to;
+  if (from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
+  const t0 = performance.now(), dur = 700;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = Math.round(from + (to - from) * e);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function renderDash() {
+  const u = me.user, p = me.plan, active = Boolean(p && p.active);
+  $('#helloName').textContent = u ? ', ' + u.name : '';
+  // Discord
+  $('#tDiscord').textContent = u ? u.name : (me.ready ? 'Not linked' : 'Coming soon');
+  $('#tDiscordPill').textContent = u ? 'Linked' : 'Log in';
+  $('#tDiscordPill').classList.toggle('on', Boolean(u));
+  const av = $('#tDiscordAv');
+  av.hidden = !u;
+  if (u) av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+  // Roblox
+  const on = connected();
+  $('#tRoblox').textContent = on ? (cfg.creatorType === 'group' ? 'Group ' : '') + cfg.creatorId : 'Not connected';
+  $('#tRobloxPill').textContent = on ? 'Linked' : 'Connect';
+  $('#tRobloxPill').classList.toggle('on', on);
+  // conversions (this browser)
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  countTo($('#tTotal'), jobs.length);
+  $('#tMonth').textContent = jobs.filter((j) => j.createdAt >= monthStart.getTime()).length + ' this month';
+  // plan
+  $('#tPlan').textContent = active ? 'Unlimited' : 'Free';
+  $('#tPlanSub').textContent = active ? 'Until ' + fmtDate(p.until) : (p ? p.left + ' of ' + p.free + ' free uploads left' : '2 free uploads');
+  $('#tUpgrade').hidden = active;
+  document.querySelector('.ac-tile.plan').classList.toggle('active', active);
+  // banner above the convert form
+  const q = $('#quota');
+  q.hidden = !u || !p;
+  if (u && p) {
+    q.classList.toggle('active', active);
+    q.classList.toggle('empty', !active && p.left <= 0);
+    $('#quotaMain').textContent = active ? 'Unlimited uploads' : p.left + ' / ' + p.free + ' free uploads remaining';
+    $('#quotaSub').textContent = active ? 'Your plan runs until ' + fmtDate(p.until) : 'Free plan · converting and downloading are always free';
+    $('#quotaBtn').hidden = active;
+  }
+  // while a plan runs, show it instead of the buy form
+  $('#planActive').hidden = !active;
+  $('#buyForm').hidden = active;
+  if (active) $('#planActiveLine').textContent = 'Unlimited uploads until ' + fmtDate(p.until) + '.';
+}
+$('#tUpgrade').onclick = () => showPanel('plans');
+$('#quotaBtn').onclick = () => showPanel('plans');
+$('#tDiscordPill').onclick = () => { if (!me.user && me.ready) login(); };
+$('#tRobloxPill').onclick = () => openSettings();
+
+// cards light up where the pointer is
+document.querySelectorAll('.ac-tile, .ac-card').forEach((el) => {
+  el.addEventListener('pointermove', (e) => {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+// tutorial video: data-video holds a YouTube ID or link
+(() => {
+  const box = $('#tutorialVideo'), v = (box.dataset.video || '').trim();
+  const id = (v.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/) || [])[1] || (/^[\w-]{11}$/.test(v) ? v : '');
+  if (!id) return;
+  box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}" title="Audio Converter tutorial" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+})();
 async function refreshMe() {
   try { me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); } catch { /* keep what we had */ }
   renderMe();
