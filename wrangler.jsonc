@@ -21,5 +21,7 @@
     { "pattern": "3iaw.com", "custom_domain": true },
     { "pattern": "www.3iaw.com", "custom_domain": true }
   ],
+  // Discord login for the Audio Converter (the secret DISCORD_CLIENT_SECRET is set in the Cloudflare dashboard)
+  "vars": { "DISCORD_CLIENT_ID": "1571479638570434590" },
   "observability": { "enabled": true }
 }
