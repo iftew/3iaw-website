@@ -568,11 +568,13 @@ async function robloxAudio(req, env, path) {
     let meta;
     try { meta = JSON.parse(String(form.get('request') || '')); } catch { return json({ error: 'Bad request.' }, 400); }
     if (!(file instanceof File) || file.size > MAX_UPLOAD || meta.assetType !== 'Audio') return json({ error: 'Bad request.' }, 400);
-    // uploads need a Discord login; the free uploads and plans are counted per Discord account
-    const user = await sessionOf(req, env);
-    if (!user) return json({ error: 'Log in with Discord to upload.', needLogin: true }, 401);
-    const creator = 'discord:' + user.id;
-    const plan = await planStatus(env, creator);
+    // uploads need a Discord login; the free uploads and plans are counted per Discord account.
+    // Until the Discord app is set up (no DISCORD_CLIENT_ID / SECRET), uploads work without a limit.
+    const limited = Boolean(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
+    const user = limited ? await sessionOf(req, env) : null;
+    if (limited && !user) return json({ error: 'Log in with Discord to upload.', needLogin: true }, 401);
+    const creator = user ? 'discord:' + user.id : null;
+    const plan = creator ? await planStatus(env, creator) : { active: true, used: 0 };
     if (!plan.active && plan.left <= 0) {
       return json({ error: `You've used your ${FREE_UPLOADS} free uploads. Get a plan for unlimited uploads.`, needPlan: true, plan }, 402);
     }
@@ -582,7 +584,7 @@ async function robloxAudio(req, env, path) {
     out.append('fileContent', new File([file], 'audio.mp3', { type: 'audio/mpeg' }));
     const res = await robloxPassOn(ROBLOX_ASSETS + '/assets', { method: 'POST', headers: auth, body: out });
     // only an upload Roblox accepted counts
-    if (res.ok) await env.DATA.put('uses:' + creator, String(plan.used + 1));
+    if (res.ok && creator) await env.DATA.put('uses:' + creator, String(plan.used + 1));
     return res;
   }
   if (path === '/api/roblox/operation') {
