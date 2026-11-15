@@ -343,18 +343,14 @@ $('#acForm').onsubmit = (e) => {
 
 // ---------- console panels (sidebar) ----------
 const navTabs = [...document.querySelectorAll('.ac-nav [role="tab"]')];
-// on wide screens Convert shows the Roblox Account panel beside it, as a second column
-const wide = matchMedia('(min-width: 1200px)');
 let current = 'convert';
 function showPanel(name, focus) {
   current = name;
-  const duo = name === 'convert' && wide.matches;
-  $('#panels').classList.toggle('duo', duo);
   navTabs.forEach((t) => {
     const on = t.dataset.panel === name;
     t.setAttribute('aria-selected', String(on));
     t.tabIndex = on ? 0 : -1;
-    $('#panel-' + t.dataset.panel).hidden = !(on || (duo && t.dataset.panel === 'account'));
+    $('#panel-' + t.dataset.panel).hidden = !on;
     if (on && focus) t.focus();
   });
   // on a phone the panel is below the menu, so bring its top into view
@@ -372,8 +368,6 @@ navTabs.forEach((t, i) => {
   };
 });
 
-wide.addEventListener('change', () => showPanel(current));
-if (wide.matches) showPanel('convert');
 // ---------- settings ----------
 // the Roblox account panel replaces the old pop-up; "closing" it goes back to Convert
 const dlg = { close: () => showPanel('convert') };
@@ -400,7 +394,7 @@ function openSettings() {
   $('#creatorId').value = cfg.creatorId || '';
   $('#remember').checked = store.get('ac.key', '') !== '' || !sessionKey;
   syncCreatorLbl();
-  if (!(current === 'convert' && wide.matches)) showPanel('account');
+  showPanel('account');
   if (!sessionKey) $('#apiKey').focus({ preventScroll: true });
 }
 $('#creatorType').onchange = syncCreatorLbl;
