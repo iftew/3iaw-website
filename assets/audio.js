@@ -323,8 +323,8 @@ $('#acForm').onsubmit = (e) => {
   if (!file) { err.textContent = 'Choose an audio file first.'; return; }
   if (autoUpload.checked && !connected()) { err.textContent = 'Connect your Roblox account first, or untick upload.'; openSettings(); return; }
   // uploading needs a Discord login, and a plan after the free uploads; converting alone is always free
-  if (autoUpload.checked && me.ready && !me.user) { err.textContent = 'Log in with Discord to upload, or untick upload.'; showPanel('plans'); return; }
-  if (autoUpload.checked && me.plan && !me.plan.active && me.plan.left <= 0) { err.textContent = "You've used your 2 free uploads. Get a plan, or untick upload."; showPanel('plans'); return; }
+  if (autoUpload.checked && me.ready && !me.user) { err.textContent = 'Log in with Discord to upload, or untick upload.'; showPlans(); return; }
+  if (autoUpload.checked && me.plan && !me.plan.active && me.plan.left <= 0) { err.textContent = "You've used your 2 free uploads. Get a plan, or untick upload."; showPlans(); return; }
   if (file.size > 300 * 1024 * 1024) { err.textContent = 'That file is too big (over 300 MB).'; return; }
   const job = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -388,7 +388,9 @@ const syncCreatorLbl = () => {
   const g = $('#creatorType').value === 'group';
   $('#creatorLbl').textContent = g ? 'Group ID' : 'Username or user ID';
   $('#creatorId').placeholder = g ? 'group ID or group link' : 'username, ID or profile link';
+  document.querySelectorAll('#typePick button').forEach((b) => { const on = b.dataset.v === $('#creatorType').value; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
 };
+document.querySelectorAll('#typePick button').forEach((b) => { b.onclick = () => { $('#creatorType').value = b.dataset.v; syncCreatorLbl(); }; });
 function openSettings() {
   $('#settingsErr').textContent = '';
   $('#apiKey').value = '';
@@ -466,12 +468,21 @@ $('#jobs').addEventListener('toggle', (e) => {
 function jobHTML(j) {
   const busy = ['queued', 'convert', 'upload'].includes(j.stage);
   const out = outputs.get(j.id);
-  const fx = [(+j.speed).toFixed(2) + 'x'];
-  if (j.gain) fx.push((j.gain > 0 ? '+' : '') + j.gain + ' dB');
-  if (j.outputSeconds) fx.push(fmtTime(j.outputSeconds));
-  if (j.outputBytes) fx.push((j.outputBytes / 1e6).toFixed(1) + ' MB');
-  const fileName = (j.name || 'audio').replace(/[\\/:*?"<>|]/g, '') + '.mp3';
+  const fileName = (j.name || 'audio').replace(/[\/:*?"<>|]/g, '') + '.mp3';
   const open = openJobs.has(j.id) ? openJobs.get(j.id) : (busy || j.stage === 'error');
+  const canUpload = j.stage === 'ready' || (j.stage === 'error' && j.failedStage === 'upload' && out);
+  const icoCopy = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="2"/></svg>';
+  const icoOpen = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const icoDown = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const icoUp = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V5M7 10l5-5 5 5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const assetState = j.moderation === 'Approved' ? 'approved' : j.moderation === 'Rejected' ? 'rejected' : 'in review';
+  const rows = [
+    ['Source', `<span class="ac-dim">File</span> ${esc(j.source)}`],
+    ['Speed', `<b>${esc((+j.speed).toFixed(2))}x</b> <span class="ac-dim">Max Duration: ${esc(j.maxSeconds || 400)}s</span>`],
+    ['Amplify', `${esc((j.gain > 0 ? '+' : '') + (j.gain || 0))} dB`],
+  ];
+  if (j.outputSeconds || j.outputBytes) rows.push(['Output', [j.outputSeconds ? fmtTime(j.outputSeconds) : '', j.outputBytes ? (j.outputBytes / 1e6).toFixed(1) + ' MB' : ''].filter(Boolean).map(esc).join(' <span class="ac-dim">·</span> ')]);
+  rows.push(['Date', esc(new Date(j.createdAt || Date.now()).toLocaleString())]);
   return `<details class="ac-job" data-id="${esc(j.id)}"${open ? ' open' : ''}>
     <summary class="ac-job-row">
       <div class="ac-job-main">
@@ -482,20 +493,25 @@ function jobHTML(j) {
       <span class="ac-chev" aria-hidden="true"></span>
     </summary>
     <div class="ac-job-body">
-    <div class="ac-job-src">${esc(j.source)}</div>
     ${busy ? `<div class="ac-bar"><i style="width:${j.progress || 0}%"></i></div>` : ''}
-    <div class="ac-meta">${fx.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
-    ${j.assetId ? `<div class="ac-asset"><a href="https://create.roblox.com/store/asset/${esc(j.assetId)}" target="_blank" rel="noopener">create.roblox.com/store/asset/${esc(j.assetId)}</a><button type="button" class="ac-btn" data-act="copyid">Copy ID</button><button type="button" class="ac-btn" data-act="copy">Copy link</button></div>` : ''}
+    <div class="ac-actions">
+      ${j.assetId ? `<button type="button" class="ac-btn solid" data-act="copy">${icoCopy}Copy link</button>` : ''}
+      ${canUpload ? `<button type="button" class="ac-btn solid" data-act="upload">${icoUp}Upload to Roblox</button>` : ''}
+      ${out ? `<a class="ac-btn" href="${out.url}" download="${esc(fileName)}">${icoDown}Download MP3</a>` : ''}
+      ${j.assetId ? '<button type="button" class="ac-btn" data-act="check">Check status</button>' : ''}
+      ${!busy ? '<button type="button" class="ac-btn ghost" data-act="remove">Remove</button>' : ''}
+    </div>
+    ${j.assetId ? `<div class="ac-kv-head">Asset <span class="${j.moderation === 'Approved' ? 'ok' : j.moderation === 'Rejected' ? 'bad' : 'rev'}">· ${esc(assetState)}</span></div>
+    <div class="ac-asset"><b>${esc(j.assetId)}</b>
+      <button type="button" class="ac-icon" data-act="copyid" title="Copy ID" aria-label="Copy ID">${icoCopy}</button>
+      <a class="ac-icon" href="https://create.roblox.com/store/asset/${esc(j.assetId)}" target="_blank" rel="noopener" title="Open on Roblox" aria-label="Open on Roblox">${icoOpen}</a></div>` : ''}
+    ${out ? `<audio class="ac-player" controls preload="metadata" src="${out.url}"></audio>` : ''}
     ${(j.notes || []).map((n) => `<div class="ac-warn">${esc(n)}</div>`).join('')}
     ${j.error ? `<div class="ac-err">${esc(j.error)}</div>` : ''}
     ${j.moderationError ? `<div class="ac-err">${esc(j.moderationError)}</div>` : ''}
-    <div class="ac-actions">
-      ${out ? `<audio controls preload="metadata" src="${out.url}"></audio>` : ''}
-      ${j.stage === 'ready' || (j.stage === 'error' && j.failedStage === 'upload' && out) ? '<button type="button" class="ac-btn solid" data-act="upload">Upload to Roblox</button>' : ''}
-      ${j.assetId ? '<button type="button" class="ac-btn" data-act="check">Check status</button>' : ''}
-      ${out ? `<a class="ac-btn" href="${out.url}" download="${esc(fileName)}">Download MP3</a>` : ''}
-      ${!busy ? '<button type="button" class="ac-btn" data-act="remove">Remove</button>' : ''}
-    </div></div></details>`;
+    <div class="ac-kv-head">Details</div>
+    <div class="ac-kv">${rows.map(([k, v]) => `<div><span>${k}</span><p>${v}</p></div>`).join('')}</div>
+    </div></details>`;
 }
 function matches(j) {
   if (filter === 'all') return true;
@@ -566,11 +582,6 @@ function renderMe() {
     $('#mePlan').textContent = planWords(me.plan);
     const av = $('#meAvatar');
     av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
-    $('#planText').textContent = me.plan && me.plan.active ? 'Unlimited' : 'Free';
-    $('#planLine').textContent = '@' + u.username + ': ' + planWords(me.plan) + '.';
-  } else {
-    $('#planText').textContent = 'Not logged in';
-    $('#planLine').textContent = me.ready ? 'Log in with Discord to see your free uploads and buy a plan.' : 'Discord login is being set up. Converting and downloading work already.';
   }
   renderDash();
 }
@@ -639,17 +650,41 @@ function renderDash() {
   if (u && p) {
     q.classList.toggle('active', active);
     q.classList.toggle('empty', !active && p.left <= 0);
-    $('#quotaMain').textContent = active ? 'Unlimited uploads' : p.left + ' / ' + p.free + ' free uploads remaining';
-    $('#quotaSub').textContent = active ? 'Your plan runs until ' + fmtDate(p.until) : 'Free plan · converting and downloading are always free';
+    $('#quotaNum').textContent = active ? '∞' : p.left;
+    $('#quotaMain').textContent = active ? 'Unlimited uploads' : '/' + p.free + ' free uploads left';
+    $('#quotaSub').textContent = active ? 'Until ' + fmtDate(p.until) : 'Free plan';
     $('#quotaBtn').hidden = active;
   }
+  $('#cPlan').textContent = active ? 'Unlimited' : 'Free';
+  $('#cPlan').classList.toggle('on', active);
   // while a plan runs, show it instead of the buy form
   $('#planActive').hidden = !active;
   $('#buyForm').hidden = active;
   if (active) $('#planActiveLine').textContent = 'Unlimited uploads until ' + fmtDate(p.until) + '.';
+  // Accounts & Plan: profile card
+  $('#pName').textContent = u ? u.name : (me.ready ? 'Not logged in' : 'Discord login coming soon');
+  const pav = $('#pAvatar');
+  pav.hidden = !u;
+  if (u) pav.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+  $('#pInitial').textContent = u ? (u.name || '?').trim().charAt(0).toUpperCase() : '?';
+  const chip = (el, label, value) => {
+    el.classList.toggle('on', Boolean(value));
+    el.innerHTML = (value ? '<svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '')
+      + esc(label) + ' <em>' + esc(value || 'not linked') + '</em>';
+  };
+  chip($('#pDiscord'), 'Discord Account', u && u.name);
+  chip($('#pRoblox'), 'Roblox Account', on ? (prof && (prof.username || prof.name)) || cfg.creatorId : '');
+  $('#planText').textContent = active ? 'Unlimited' : 'Free';
+  $('#planLine').textContent = active ? 'Until ' + fmtDate(p.until) : (p ? p.left + ' of ' + p.free + ' free uploads left' : '2 free uploads');
+  $('#pUpgrade').hidden = active;
+  $('#profileCard').classList.toggle('active', active);
+  countTo($('#pTotal'), jobs.length);
+  countTo($('#pMonth'), jobs.filter((j) => j.createdAt >= monthStart.getTime()).length);
+  countTo($('#pUploaded'), jobs.filter((j) => j.assetId).length);
 }
-$('#tUpgrade').onclick = () => showPanel('plans');
-$('#quotaBtn').onclick = () => showPanel('plans');
+$('#pUpgrade').onclick = () => $('#plans').scrollIntoView({ behavior: 'smooth', block: 'start' });
+$('#tUpgrade').onclick = () => showPlans();
+$('#quotaBtn').onclick = () => showPlans();
 $('#tDiscordPill').onclick = () => { if (!me.user && me.ready) login(); };
 $('#tRobloxPill').onclick = () => openSettings();
 
@@ -673,8 +708,13 @@ async function refreshMe() {
   try { me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); } catch { /* keep what we had */ }
   renderMe();
 }
+// the plan lives in the Roblox Account tab: open it and bring the plan into view
+function showPlans() {
+  showPanel('account');
+  setTimeout(() => $('#plans').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
 // after the free uploads: say why, and open the Plans section
-function limitHit(e) { toast(e.message); showPanel('plans'); refreshMe(); }
+function limitHit(e) { toast(e.message); showPlans(); refreshMe(); }
 const login = () => { location.href = '/api/auth/discord'; };
 $('#loginBtn').onclick = login;
 $('#planLogin').onclick = login;

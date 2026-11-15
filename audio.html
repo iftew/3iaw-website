@@ -52,7 +52,7 @@
 <main>
 <!-- Body of /audio (Audio Converter). scripts/build-pages.ps1 wraps it in the site header and footer and writes audio.html.
      The converter runs in the visitor's browser (assets/audio.js); Roblox calls go through the Worker (/api/roblox/*).
-     Console layout: a sidebar picks one panel (Convert, History, Roblox account, Plans, Tutorial);
+     Console layout: a sidebar picks one panel (Convert Audio, History, Tutorial, Roblox Account with the plan);
      the welcome line and the four account cards sit above every panel. -->
 <section class="ac-console grid-bg">
   <aside class="ac-side" aria-label="Audio Converter sections">
@@ -68,18 +68,13 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="ac-lbl">History</span> <span class="ac-count" id="navCount">0</span>
       </button>
-      <button type="button" role="tab" id="tab-plans" aria-controls="panel-plans" aria-selected="false" tabindex="-1" data-panel="plans">
-        <span class="ac-num">03</span>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        <span class="ac-lbl">Plans</span>
-      </button>
       <button type="button" role="tab" id="tab-tutorial" aria-controls="panel-tutorial" aria-selected="false" tabindex="-1" data-panel="tutorial">
-        <span class="ac-num">04</span>
+        <span class="ac-num">03</span>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/><path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor"/></svg>
         <span class="ac-lbl">Tutorial</span>
       </button>
       <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-panel="account">
-        <span class="ac-num">05</span>
+        <span class="ac-num">04</span>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         <span class="ac-lbl">Roblox Account</span> <span class="ac-dot" id="navDot"></span>
       </button>
@@ -136,15 +131,19 @@
       <h2 class="ac-title">Convert audio</h2>
 
       <form class="ac-card" id="acForm" novalidate>
-        <div class="ac-card-head">
-          <span>New conversion</span>
+        <div class="ac-card-head ac-term-head">
+          <span class="ac-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="ac-term-name">3iaw &mdash; convert</span>
           <button type="button" class="ac-link" id="openSettings"><span class="ac-dot" id="connDot"></span><span id="connText">Connect Roblox</span></button>
+          <span class="ac-plan-pill" id="cPlan">Free</span>
         </div>
 
         <!-- uploads left on the free plan, or how long the plan runs -->
         <div class="ac-quota" id="quota" hidden>
-          <div><b id="quotaMain"></b><span id="quotaSub"></span></div>
-          <button type="button" class="ac-upgrade solid" id="quotaBtn">Upgrade plan</button>
+          <svg class="ac-bolt" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <b id="quotaNum">0</b><span class="ac-quota-k" id="quotaMain">/2 left</span>
+          <span class="ac-quota-sub" id="quotaSub"></span>
+          <button type="button" class="ac-pill-btn" id="quotaBtn">Upgrade <span aria-hidden="true">&#8599;</span></button>
         </div>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>01</b> Source<i></i></div>
@@ -195,14 +194,15 @@
       </form>
     </div>
 
-    <!-- 02 your audio -->
+    <!-- 02 history -->
     <div class="ac-panel" role="tabpanel" id="panel-library" aria-labelledby="tab-library" hidden>
       <span class="ac-crumb">// 02 &mdash; History</span>
       <h2 class="ac-title">Conversion History</h2>
       <p class="ac-sub">Track all your audio conversions and uploads. Statuses refresh on their own.</p>
       <div class="ac-card">
-        <div class="ac-card-head">
-          <span>History</span>
+        <div class="ac-card-head ac-term-head">
+          <span class="ac-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="ac-term-name">3iaw &mdash; history</span>
           <div class="ac-filter" id="filter">
             <button type="button" class="on" data-f="all">All</button><button type="button" data-f="Approved">Approved</button>
             <button type="button" data-f="Reviewing">Reviewing</button><button type="button" data-f="failed">Failed</button>
@@ -213,17 +213,76 @@
       </div>
     </div>
 
-    <!-- 04 plans -->
-    <div class="ac-panel" role="tabpanel" id="panel-plans" aria-labelledby="tab-plans" hidden>
-      <span class="ac-crumb">// 03 &mdash; Plans</span>
-      <h2 class="ac-title">Unlimited uploads</h2>
-      <p class="ac-sub">Every Discord account gets 2 free uploads to Roblox. A plan gives your Discord account unlimited uploads. Converting and downloading are always free.</p>
+    <!-- 04 roblox account + plan -->
+    <div class="ac-panel" role="tabpanel" id="panel-account" aria-labelledby="tab-account" hidden>
+      <span class="ac-crumb">// 04 &mdash; Roblox Account</span>
+      <h2 class="ac-title">Accounts &amp; Plan</h2>
+      <p class="ac-sub">Link your creator account and manage your plan.</p>
 
-      <div class="ac-card">
-        <div class="ac-card-head"><span>Your plan</span><span class="ac-link static"><span class="ac-dot" id="planDot"></span><span id="planText">Not logged in</span></span></div>
-        <p class="ac-plan-line" id="planLine">Log in with Discord to see your free uploads and buy a plan.</p>
-        <button type="button" class="btn btn-solid ac-go" id="planLogin">Log in with Discord</button>
+      <!-- who is logged in, linked accounts, plan and totals -->
+      <div class="ac-profile" id="profileCard">
+        <div class="ac-prof-top">
+          <div class="ac-prof-av"><img id="pAvatar" alt="" hidden><span id="pInitial">?</span></div>
+          <div class="ac-prof-id">
+            <b id="pName">Not logged in</b>
+            <div class="ac-chip-row">
+              <span class="ac-chip" id="pDiscord">Discord Account <em>not linked</em></span>
+              <span class="ac-chip" id="pRoblox">Roblox Account <em>not linked</em></span>
+            </div>
+            <button type="button" class="ac-discord small" id="planLogin">Log in with Discord</button>
+          </div>
+          <div class="ac-prof-plan">
+            <span class="k">Plan</span>
+            <b id="planText">Free</b>
+            <span class="s" id="planLine">2 free uploads</span>
+            <span class="ac-dot" id="planDot" hidden></span>
+            <button type="button" class="ac-pill-btn" id="pUpgrade">Upgrade <span aria-hidden="true">&#8599;</span></button>
+          </div>
+        </div>
+        <div class="ac-prof-stats">
+          <div><span>Total conversions</span><b id="pTotal">0</b></div>
+          <div><span>This month</span><b id="pMonth">0</b></div>
+          <div><span>Uploaded to Roblox</span><b id="pUploaded">0</b></div>
+        </div>
       </div>
+
+      <div id="settings">
+        <form class="ac-card ac-term" id="settingsForm">
+          <div class="ac-card-head ac-term-head">
+            <span class="ac-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="ac-term-name">3iaw &mdash; roblox account</span>
+            <a class="ac-term-link" href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Create API key on Roblox Creator Hub <span aria-hidden="true">&#8599;</span></a>
+          </div>
+          <div class="ac-dialog-body">
+            <div class="ac-acct-status"><span class="ac-dot" id="acctDot"></span><span id="acctText">Not connected</span></div>
+            <div class="ac-seg ac-type" id="typePick" role="radiogroup" aria-label="Upload as">
+              <button type="button" data-v="user" class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Personal Account</button>
+              <button type="button" data-v="group"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Group Account</button>
+            </div>
+            <select id="creatorType" hidden><option value="user">My account</option><option value="group">A group</option></select>
+            <ol class="ac-guide">
+              <li>Open <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com &rarr; Credentials</a> and create an API key.</li>
+              <li>Add the <b>Assets</b> API with <b>Read</b> and <b>Write</b>.</li>
+              <li>Under Accepted IP Addresses, add <code>0.0.0.0/0</code>. Uploads are sent from 3iaw.com's server, not your PC, so this is required.</li>
+              <li>Save, then copy the key and paste it below.</li>
+            </ol>
+            <label class="field"><span>API key <em id="keyHint"></em></span><input type="password" id="apiKey" placeholder="paste to set or replace" autocomplete="off"></label>
+            <label class="field"><span id="creatorLbl">Username or user ID</span><input type="text" id="creatorId" placeholder="username, ID or profile link"></label>
+            <label class="ac-check"><input type="checkbox" id="remember" checked> Remember on this device</label>
+            <p class="ac-small">The key is kept in this browser and sent to Roblox (through 3iaw.com) only when you upload or check a status. 3iaw.com never stores it.</p>
+            <p class="form-status err" id="settingsErr" role="alert"></p>
+          </div>
+          <div class="ac-dialog-foot">
+            <button type="button" class="btn btn-outline" id="forgetKey">Forget key</button>
+            <span class="ac-spacer"></span>
+            <button type="button" class="btn btn-outline" id="cancelSettings">Back to convert</button>
+            <button type="submit" class="btn btn-solid" id="saveSettings">Save</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- plan: how to buy one (hidden while a plan is running) -->
+      <div class="ac-plans-sec" id="plans">
 
       <!-- shown instead of the buy form while a plan is running -->
       <div class="ac-card ac-active" id="planActive" hidden>
@@ -260,46 +319,12 @@
         <p class="form-status err" id="buyErr" role="alert"></p>
         <p class="ac-small">Your plan starts when the payment is confirmed, usually within a few hours.</p>
       </form>
-    </div>
-
-    <!-- 03 roblox account -->
-    <div class="ac-panel" role="tabpanel" id="panel-account" aria-labelledby="tab-account" hidden>
-      <span class="ac-crumb">// 05 &mdash; Roblox Account</span>
-      <h2 class="ac-title">Connect Roblox</h2>
-      <p class="ac-sub">Uploads use your own Roblox Open Cloud API key, so the audio goes straight to your account or group.</p>
-      <div id="settings">
-        <form class="ac-card" id="settingsForm">
-          <div class="ac-card-head"><span>Roblox account</span><span class="ac-link static"><span class="ac-dot" id="acctDot"></span><span id="acctText">Not connected</span></span></div>
-          <div class="ac-dialog-body">
-            <ol class="ac-guide">
-              <li>Open <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com &rarr; Credentials</a> and create an API key.</li>
-              <li>Add the <b>Assets</b> API with <b>Read</b> and <b>Write</b>.</li>
-              <li>Under Accepted IP Addresses, add <code>0.0.0.0/0</code>. Uploads are sent from 3iaw.com's server, not your PC, so this is required.</li>
-              <li>Save, then copy the key and paste it below.</li>
-            </ol>
-            <label class="field"><span>API key <em id="keyHint"></em></span><input type="password" id="apiKey" placeholder="paste to set or replace" autocomplete="off"></label>
-            <div class="field-row ac-row">
-              <label class="field"><span>Upload as</span>
-                <select id="creatorType"><option value="user">My account</option><option value="group">A group</option></select></label>
-              <label class="field"><span id="creatorLbl">Username or user ID</span><input type="text" id="creatorId" placeholder="username, ID or profile link"></label>
-            </div>
-            <label class="ac-check"><input type="checkbox" id="remember" checked> Remember on this device</label>
-            <p class="ac-small">The key is kept in this browser and sent to Roblox (through 3iaw.com) only when you upload or check a status. 3iaw.com never stores it.</p>
-            <p class="form-status err" id="settingsErr" role="alert"></p>
-          </div>
-          <div class="ac-dialog-foot">
-            <button type="button" class="btn btn-outline" id="forgetKey">Forget key</button>
-            <span class="ac-spacer"></span>
-            <button type="button" class="btn btn-outline" id="cancelSettings">Back to convert</button>
-            <button type="submit" class="btn btn-solid" id="saveSettings">Save</button>
-          </div>
-        </form>
       </div>
     </div>
 
-    <!-- 05 tutorial: put the YouTube video ID (or link) in data-video -->
+    <!-- 03 tutorial: put the YouTube video ID (or link) in data-video -->
     <div class="ac-panel" role="tabpanel" id="panel-tutorial" aria-labelledby="tab-tutorial" hidden>
-      <span class="ac-crumb">// 04 &mdash; Tutorial</span>
+      <span class="ac-crumb">// 03 &mdash; Tutorial</span>
       <h2 class="ac-title">How to use the converter</h2>
       <p class="ac-sub">From an audio file to a sound playing in your Roblox game.</p>
       <div class="ac-video" id="tutorialVideo" data-video="">
