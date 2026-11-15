@@ -362,3 +362,21 @@
 @media (prefers-reduced-motion: reduce){
   .ac-welcome, .ac-tile, .ac-panel:not([hidden]), .ac-quota, .ac-go::after, .ac-drop svg, .ac-video-empty svg, .ac-active-badge{animation:none !important;}
 }
+
+/* sidebar tabs: one line each, Title Case, icons and numbers in fixed columns, a dot marks the open tab */
+.ac-console{grid-template-columns:calc(250px + 6vw) minmax(0,1fr);}
+.ac-nav{gap:.3rem;}
+.ac-nav button{gap:.85rem; padding:.78rem .9rem; white-space:nowrap; font-size:.96rem; letter-spacing:-.01em;}
+.ac-nav .ac-num{flex:none; width:1.3rem; font-size:.7rem;}
+.ac-nav svg{width:18px; height:18px;}
+.ac-lbl{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;}
+.ac-nav .ac-count, .ac-nav .ac-dot{margin-left:0; flex:none;}
+.ac-nav button[aria-selected="true"]::before{display:none;}
+.ac-nav button[aria-selected="true"]::after{content:""; flex:none; width:6px; height:6px; border-radius:50%; background:var(--white); box-shadow:0 0 8px rgba(255,255,255,.7);}
+.ac-nav button[aria-selected="true"] .ac-num{color:var(--white);}
+@media (max-width:900px){
+  .ac-console{grid-template-columns:1fr;}
+  .ac-nav button{gap:.5rem; padding:.65rem .7rem; font-size:.85rem;}
+  .ac-nav button[aria-selected="true"]::after{display:none;}
+  .ac-lbl{flex:none;}
+}
