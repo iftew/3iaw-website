@@ -6,7 +6,7 @@ import { SoundTouch, SimpleFilter } from 'https://cdn.jsdelivr.net/npm/soundtouc
 
 const LAME_URL = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
 const RATE = 44100;
-const MAX_SECONDS = 7 * 60;          // Roblox audio length limit
+const MAX_SECONDS = 400;             // longest converted audio (6:40), under Roblox's 7:00 limit
 const MAX_BYTES = 20 * 1024 * 1024;  // Roblox audio file size limit
 const KBPS = 192;
 
@@ -138,7 +138,7 @@ function amplify(L, R, gainDb) {
 }
 
 // smooth edges, so a cut never ends (or starts) with a click: a tiny fade-in, and a cosine fade-out
-// (longer when the audio was cut short, e.g. at Roblox's 7:00 limit)
+// (longer when the audio was cut short, e.g. at the 400 s maximum)
 function fadeEdges(L, R, fadeOutSeconds) {
   const len = L.length;
   const inN = Math.min(Math.round(0.012 * RATE), len >> 3);
@@ -183,13 +183,13 @@ async function convert(job, file) {
   const maxIn = Math.floor(MAX_SECONDS * job.speed * RATE);
   const inLen = Math.min(buf.length - start, maxIn);
   if (inLen < RATE * 0.2) throw new Error('Nothing left to convert after the start time.');
-  job.notes = buf.length - start > maxIn ? ['Cut to 7:00, the longest audio Roblox allows.'] : [];
+  job.notes = buf.length - start > maxIn ? ['Cut to 6:40 (400 seconds), the longest the converter makes.'] : [];
   // copies, so the effects never change the decoded original
   let L = buf.getChannelData(0).slice(start, start + inLen);
   let R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice(start, start + inLen);
   if (Math.abs(job.speed - 1) > 1e-3 || Math.abs(job.pitch) > 1e-3) [L, R] = await stretch(L, R, job, prog(0.1, 0.5));
   amplify(L, R, job.gain);
-  // cut before the song's own end (7:00 limit): a 3 s fade; otherwise a short 1.2 s one just to clean the tail
+  // cut before the song's own end (400 s maximum): a 3 s fade; otherwise a short 1.2 s one just to clean the tail
   const cutShort = buf.length - start > maxIn;
   fadeEdges(L, R, cutShort ? 3 : 1.2);
   const blob = await encodeMp3(L, R, prog(0.6, 0.4));

@@ -117,7 +117,7 @@
         <input type="file" id="fileIn" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm" hidden>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>02</b> Sound<i></i>
-          <span class="ac-summary" id="soundSummary">Default &middot; 1.00x &middot; 0 st &middot; +0 dB</span>
+          <span class="ac-summary" id="soundSummary">Default &middot; 1.00x &middot; 0 st &middot; -8 dB</span>
           <button type="button" class="ac-toggle" id="soundToggle" aria-expanded="true" aria-controls="soundBox">Hide</button>
         </div>
         <div class="ac-box" id="soundBox">
@@ -138,7 +138,7 @@
             <button type="button" data-s="1" data-m="tempo" data-p="5" data-name="Chipmunk">Chipmunk</button>
           </div>
 
-          <label class="ac-label ac-big" for="speed">Speed <span><em id="speedVal">1.00x</em> <i>&middot;</i> <b id="speedGain">+0 dB</b></span></label>
+          <label class="ac-label ac-big" for="speed">Speed <span><em id="speedVal">1.00x</em> <i>&middot;</i> <b id="speedGain">-8 dB</b></span></label>
           <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
           <div class="ac-seg" id="mode">
             <button type="button" data-v="tempo" class="on">Keep pitch</button>
@@ -154,8 +154,8 @@
             <button type="button" data-pv="12">+12</button>
           </div>
 
-          <label class="ac-label" for="gain">Amplify <em id="gainVal">+0 dB</em></label>
-          <input type="range" id="gain" min="-10" max="15" step="1" value="0">
+          <label class="ac-label" for="gain">Amplify <em id="gainVal">-8 dB</em></label>
+          <input type="range" id="gain" min="-10" max="15" step="1" value="-8">
         </div>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>03</b> Upload<i></i></div>
