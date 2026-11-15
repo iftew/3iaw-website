@@ -295,7 +295,10 @@ document.querySelectorAll('.ac-fx button').forEach((b) => {
     showSpeed(); showPitch(); markPreset();
   };
 });
-markPreset();
+// every visit starts on Default (1x, -8 dB), even after a refresh or coming back with the Back button
+const pickDefault = () => document.querySelector('.ac-presets [data-name="Default"]').click();
+pickDefault();
+window.addEventListener('pageshow', (e) => { if (e.persisted) pickDefault(); });
 
 const drop = $('#drop'), fileIn = $('#fileIn');
 function setFile(f) {
