@@ -135,6 +135,11 @@
 
           <label class="ac-label" for="speed">Speed <em id="speedVal">1.00x</em></label>
           <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
+          <div class="ac-speed-recommendation" id="speedRecommendation" role="status" aria-live="polite" style="margin-top:10px;padding:10px 12px;border:1px solid rgba(130,150,190,.28);border-radius:9px;font-size:13px;">
+            <strong>Recommended Roblox playback speed:</strong>
+            <span id="robloxSpeedRecommendation">0.99</span>
+            <span style="opacity:.7"> (estimated)</span>
+          </div>
 
           <label class="ac-label" for="gain">Amplify (dB) <em id="gainVal">-8 dB</em></label>
           <input type="range" id="gain" min="-14" max="15" step="1" value="-8">
@@ -254,29 +259,58 @@
 <div class="ac-toast" id="toast" role="status" aria-live="polite"></div>
 
 
-<!-- Preset-specific amplifier settings -->
+
+<!-- Preset amplifier and Roblox playback-speed recommendations -->
 <script>
 (() => {
   const presets = document.querySelector(".ac-presets");
   const gain = document.getElementById("gain");
   const gainVal = document.getElementById("gainVal");
+  const speed = document.getElementById("speed");
+  const recommendation = document.getElementById("robloxSpeedRecommendation");
 
-  if (!presets || !gain) return;
+  // Calibration: the Default preset (2.3x) corresponds to Roblox playback speed 0.43.
+  const REFERENCE_CONVERSION_SPEED = 2.3;
+  const REFERENCE_ROBLOX_SPEED = 0.43;
 
-  presets.addEventListener("click", (event) => {
-    const preset = event.target.closest("button[data-gain]");
-    if (!preset || !presets.contains(preset)) return;
+  function updateRobloxSpeedRecommendation() {
+    if (!speed || !recommendation) return;
+    const conversionSpeed = Number(speed.value);
+    if (!Number.isFinite(conversionSpeed) || conversionSpeed <= 0) return;
 
-    const db = Number(preset.dataset.gain);
-    if (!Number.isFinite(db)) return;
+    const suggested = REFERENCE_ROBLOX_SPEED *
+      (REFERENCE_CONVERSION_SPEED / conversionSpeed);
 
-    gain.value = String(db);
-    if (gainVal) gainVal.textContent = `${db} dB`;
+    recommendation.textContent = suggested.toFixed(2);
+  }
 
-    // Notify the converter's existing UI/state listeners.
-    gain.dispatchEvent(new Event("input", { bubbles: true }));
-    gain.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  if (presets) {
+    presets.addEventListener("click", (event) => {
+      const preset = event.target.closest("button");
+      if (!preset || !presets.contains(preset)) return;
+
+      // Apply the preset's dB value when one is specified.
+      if (preset.dataset.gain !== undefined && gain) {
+        const db = Number(preset.dataset.gain);
+        if (Number.isFinite(db)) {
+          gain.value = String(db);
+          if (gainVal) gainVal.textContent = `${db} dB`;
+          gain.dispatchEvent(new Event("input", { bubbles: true }));
+          gain.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+
+      // Recalculate after the converter's preset handler updates the speed.
+      window.setTimeout(updateRobloxSpeedRecommendation, 0);
+    });
+  }
+
+  if (speed) {
+    speed.addEventListener("input", updateRobloxSpeedRecommendation);
+    speed.addEventListener("change", updateRobloxSpeedRecommendation);
+  }
+
+  updateRobloxSpeedRecommendation();
 })();
 </script>
 
