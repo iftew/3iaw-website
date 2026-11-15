@@ -295,7 +295,7 @@ document.querySelectorAll('.ac-fx button').forEach((b) => {
     showSpeed(); showPitch(); markPreset();
   };
 });
-// every visit starts on Default (1x, -8 dB), even after a refresh or coming back with the Back button
+// every visit starts on Default (1.2x, -8 dB), even after a refresh or coming back with the Back button
 const pickDefault = () => document.querySelector('.ac-presets [data-name="Default"]').click();
 pickDefault();
 window.addEventListener('pageshow', (e) => { if (e.persisted) pickDefault(); });
