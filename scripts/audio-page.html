@@ -16,20 +16,20 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="ac-lbl">History</span> <span class="ac-count" id="navCount">0</span>
       </button>
-      <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-panel="account">
-        <span class="ac-num">03</span>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span class="ac-lbl">Roblox Account</span> <span class="ac-dot" id="navDot"></span>
-      </button>
       <button type="button" role="tab" id="tab-plans" aria-controls="panel-plans" aria-selected="false" tabindex="-1" data-panel="plans">
-        <span class="ac-num">04</span>
+        <span class="ac-num">03</span>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         <span class="ac-lbl">Plans</span>
       </button>
       <button type="button" role="tab" id="tab-tutorial" aria-controls="panel-tutorial" aria-selected="false" tabindex="-1" data-panel="tutorial">
-        <span class="ac-num">05</span>
+        <span class="ac-num">04</span>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/><path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor"/></svg>
         <span class="ac-lbl">Tutorial</span>
+      </button>
+      <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-panel="account">
+        <span class="ac-num">05</span>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="ac-lbl">Roblox Account</span> <span class="ac-dot" id="navDot"></span>
       </button>
     </div>
     <!-- Discord login: who is logged in and how many free uploads are left -->
@@ -80,7 +80,7 @@
     <div class="ac-panels" id="panels">
     <!-- 01 convert -->
     <div class="ac-panel" role="tabpanel" id="panel-convert" aria-labelledby="tab-convert">
-      <span class="ac-crumb">// 01 &mdash; Convert</span>
+      <span class="ac-crumb">// 01 &mdash; Convert Audio</span>
       <h2 class="ac-title">Convert audio</h2>
 
       <form class="ac-card" id="acForm" novalidate>
@@ -163,7 +163,7 @@
 
     <!-- 04 plans -->
     <div class="ac-panel" role="tabpanel" id="panel-plans" aria-labelledby="tab-plans" hidden>
-      <span class="ac-crumb">// 04 &mdash; Plans</span>
+      <span class="ac-crumb">// 03 &mdash; Plans</span>
       <h2 class="ac-title">Unlimited uploads</h2>
       <p class="ac-sub">Every Discord account gets 2 free uploads to Roblox. A plan gives your Discord account unlimited uploads. Converting and downloading are always free.</p>
 
@@ -212,7 +212,7 @@
 
     <!-- 03 roblox account -->
     <div class="ac-panel" role="tabpanel" id="panel-account" aria-labelledby="tab-account" hidden>
-      <span class="ac-crumb">// 03 &mdash; Roblox account</span>
+      <span class="ac-crumb">// 05 &mdash; Roblox Account</span>
       <h2 class="ac-title">Connect Roblox</h2>
       <p class="ac-sub">Uploads use your own Roblox Open Cloud API key, so the audio goes straight to your account or group.</p>
       <div id="settings">
@@ -247,7 +247,7 @@
 
     <!-- 05 tutorial: put the YouTube video ID (or link) in data-video -->
     <div class="ac-panel" role="tabpanel" id="panel-tutorial" aria-labelledby="tab-tutorial" hidden>
-      <span class="ac-crumb">// 05 &mdash; Tutorial</span>
+      <span class="ac-crumb">// 04 &mdash; Tutorial</span>
       <h2 class="ac-title">How to use the converter</h2>
       <p class="ac-sub">From an audio file to a sound playing in your Roblox game.</p>
       <div class="ac-video" id="tutorialVideo" data-video="">
