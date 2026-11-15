@@ -449,7 +449,7 @@ function jobHTML(j) {
     <div class="ac-steps">${steps(j)}</div>
     ${busy ? `<div class="ac-bar"><i style="width:${j.progress || 0}%"></i></div>` : ''}
     <div class="ac-meta">${fx.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
-    ${j.assetId ? `<div class="ac-asset"><span>rbxassetid://</span><b>${esc(j.assetId)}</b><button type="button" class="ac-btn" data-act="copy">Copy</button></div>` : ''}
+    ${j.assetId ? `<div class="ac-asset"><b>rbxassetid://${esc(j.assetId)}</b><button type="button" class="ac-btn" data-act="copyid">Copy ID</button><button type="button" class="ac-btn" data-act="copy">Copy link</button></div>` : ''}
     ${(j.notes || []).map((n) => `<div class="ac-warn">${esc(n)}</div>`).join('')}
     ${j.error ? `<div class="ac-err">${esc(j.error)}</div>` : ''}
     ${j.moderationError ? `<div class="ac-err">${esc(j.moderationError)}</div>` : ''}
@@ -488,6 +488,11 @@ $('#jobs').addEventListener('click', async (e) => {
   const j = jobs.find((x) => x.id === b.closest('.ac-job').dataset.id); if (!j) return;
   const act = b.dataset.act;
   if (act === 'copy') {
+    const link = 'rbxassetid://' + j.assetId;
+    try { await navigator.clipboard.writeText(link); toast('Copied ' + link); } catch { toast('Copy failed: ' + link); }
+    return;
+  }
+  if (act === 'copyid') {
     try { await navigator.clipboard.writeText(j.assetId); toast('Asset ID copied'); } catch { toast('Copy failed: ' + j.assetId); }
   } else if (act === 'upload') {
     if (!connected()) { openSettings(); return; }
