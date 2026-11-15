@@ -568,15 +568,8 @@ function renderMe() {
   $('#loginBtn').hidden = Boolean(u);
   $('#loginBtn').disabled = !me.ready;
   if (!me.ready) $('#loginBtn').lastChild.nodeValue = 'Discord login coming soon';
-  $('#meUser').hidden = !u;
   $('#planLogin').hidden = Boolean(u) || !me.ready;
   $('#buyBtn').textContent = u ? 'Place order' : 'Log in with Discord to buy';
-  if (u) {
-    $('#meName').textContent = u.name;
-    $('#mePlan').textContent = planWords(me.plan);
-    const av = $('#meAvatar');
-    av.src = u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : 'https://cdn.discordapp.com/embed/avatars/0.png';
-  }
   renderDash();
   if ($('#hdrUser')) renderHdr();
 }
@@ -709,7 +702,7 @@ function limitHit(e) { toast(e.message); showPlans(); refreshMe(); }
 const login = () => { location.href = '/api/auth/discord'; };
 $('#loginBtn').onclick = login;
 $('#planLogin').onclick = login;
-$('#logoutBtn').onclick = async () => {
+async function logout() {
   try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
   me = { user: null, plan: null, ready: me.ready }; renderMe(); toast('Logged out');
 };
@@ -784,7 +777,7 @@ $('#buyForm').onsubmit = async (e) => {
   btn.onclick = (e) => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (open) $('#hdrLogout').focus(); };
   document.addEventListener('click', (e) => { if (!box.contains(e.target)) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { close(); btn.focus(); } });
-  $('#hdrLogout').onclick = () => { close(); $('#logoutBtn').click(); };
+  $('#hdrLogout').onclick = () => { close(); logout(); };
   $('#hdrLogin').onclick = () => { if (me.ready) login(); };
 })();
 function renderHdr() {
