@@ -37,6 +37,16 @@
 .ac-toggle{font:600 .78rem var(--font-body); color:var(--white); background:none; border:0; padding:.2rem .3rem; cursor:pointer; text-transform:none; letter-spacing:0;}
 .ac-toggle::after{content:""; display:inline-block; width:6px; height:6px; margin-left:.4rem; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2px) rotate(-135deg);}
 .ac-toggle[aria-expanded="false"]::after{transform:translateY(-4px) rotate(45deg);}
+/* preset buttons show their speed in mono after the name; the speed readout is large, like a meter */
+.ac-presets button{display:inline-flex; align-items:center; gap:.4rem; font:500 .82rem var(--font-mono); padding:.5rem .8rem;}
+.ac-presets button em{font-style:normal; color:var(--grey-dim);}
+.ac-presets button.on em{color:var(--grey-mid);}
+.ac-chips.ac-presets button.on{color:var(--white); background:var(--surface-2); border-color:var(--grey-dim);}
+.ac-label.ac-big{align-items:baseline;}
+.ac-label.ac-big span{font:400 1.25rem var(--font-mono); color:var(--grey-mid); text-transform:none; letter-spacing:-.01em;}
+.ac-label.ac-big span em{color:var(--grey-mid); font-size:inherit;}
+.ac-label.ac-big span i{font-style:normal; color:var(--grey-dim); margin:0 .25rem;}
+.ac-label.ac-big span b{font-weight:500; color:var(--white);}
 .ac-box{border:1px solid var(--line-soft); border-radius:12px; padding:.2rem 1rem 1.1rem; background:rgba(255,255,255,.015);}
 .ac-box > .ac-label:first-child{margin-top:.9rem;}
 .ac-drop svg{display:block; margin:0 auto .5rem; color:var(--grey-mid);}
@@ -55,7 +65,8 @@
 @media (max-width:900px){
   .ac-console{grid-template-columns:1fr; min-height:0;}
   .ac-side{position:static; height:auto; padding:1.4rem 6vw 1rem; border-right:0; border-bottom:1px solid var(--line-soft);}
-  .ac-nav{flex-direction:row; overflow-x:auto;}
+  .ac-nav{flex-direction:row; overflow-x:auto; scrollbar-width:none;}
+  .ac-nav::-webkit-scrollbar{display:none;}
   .ac-nav button{flex:1; justify-content:center; padding:.65rem .5rem; font-size:.85rem; white-space:nowrap;}
   .ac-nav .ac-num{display:none;}
   .ac-nav .ac-count, .ac-nav .ac-dot{margin-left:0;}
@@ -66,6 +77,9 @@
   .ac-nav button svg{display:none;}
   .ac-side-title{display:none;}
   .ac-summary{display:none;}
+}
+@media (max-width:400px){
+  .ac-side-stats{grid-template-columns:repeat(2,1fr);}
 }
 .ac-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; margin:0 0 1.6rem;}
 .ac-stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:1rem 1.1rem;}

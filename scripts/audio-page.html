@@ -51,28 +51,29 @@
         <input type="file" id="fileIn" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm" hidden>
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>02</b> Sound<i></i>
-          <span class="ac-summary" id="soundSummary">Normal &middot; 1.00x &middot; 0 st &middot; +0 dB</span>
+          <span class="ac-summary" id="soundSummary">Default &middot; 1.00x &middot; 0 st &middot; +0 dB</span>
           <button type="button" class="ac-toggle" id="soundToggle" aria-expanded="true" aria-controls="soundBox">Hide</button>
         </div>
         <div class="ac-box" id="soundBox">
-          <div class="ac-label">Quick effects</div>
-          <div class="ac-chips" id="fx">
-            <button type="button" data-s="1" data-m="tempo" data-p="0">Normal</button>
-            <button type="button" data-s="1.5" data-m="tempo" data-p="0">Fast</button>
-            <button type="button" data-s="1.25" data-m="pitch" data-p="0">Sped up</button>
-            <button type="button" data-s="1.3" data-m="pitch" data-p="2">Nightcore</button>
-            <button type="button" data-s="0.85" data-m="pitch" data-p="0">Slowed</button>
-            <button type="button" data-s="1" data-m="tempo" data-p="-4">Deep voice</button>
-            <button type="button" data-s="1" data-m="tempo" data-p="5">Chipmunk</button>
+          <div class="ac-label">Presets</div>
+          <div class="ac-chips ac-fx ac-presets">
+            <button type="button" data-s="0.8" data-m="pitch" data-p="0" data-name="Slow">Slow <em>0.8x</em></button>
+            <button type="button" data-s="1" data-m="tempo" data-p="0" data-name="Default"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>1x</em></button>
+            <button type="button" data-s="1.25" data-m="pitch" data-p="0" data-name="Fast">Fast <em>1.25x</em></button>
+            <button type="button" data-s="1.5" data-m="pitch" data-p="0" data-name="Faster">Faster <em>1.5x</em></button>
+            <button type="button" data-s="2" data-m="pitch" data-p="0" data-name="Ultra">Ultra <em>2x</em></button>
           </div>
 
-          <label class="ac-label" for="speed">Speed <em id="speedVal">1.00x</em></label>
-          <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
-          <div class="ac-chips small">
-            <button type="button" data-speed="0.8">0.8x</button><button type="button" data-speed="1">1x</button>
-            <button type="button" data-speed="1.25">1.25x</button><button type="button" data-speed="1.5">1.5x</button>
-            <button type="button" data-speed="2">2x</button><button type="button" data-speed="2.3">2.3x</button>
+          <div class="ac-label">Effects</div>
+          <div class="ac-chips ac-fx">
+            <button type="button" data-s="1.3" data-m="pitch" data-p="2" data-name="Nightcore">Nightcore</button>
+            <button type="button" data-s="0.85" data-m="pitch" data-p="0" data-name="Slowed">Slowed</button>
+            <button type="button" data-s="1" data-m="tempo" data-p="-4" data-name="Deep voice">Deep voice</button>
+            <button type="button" data-s="1" data-m="tempo" data-p="5" data-name="Chipmunk">Chipmunk</button>
           </div>
+
+          <label class="ac-label ac-big" for="speed">Speed <span><em id="speedVal">1.00x</em> <i>&middot;</i> <b id="speedGain">+0 dB</b></span></label>
+          <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1">
           <div class="ac-seg" id="mode">
             <button type="button" data-v="tempo" class="on">Keep pitch</button>
             <button type="button" data-v="pitch">Pitch follows speed</button>

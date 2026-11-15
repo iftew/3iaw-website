@@ -252,18 +252,18 @@ let file = null, mode = 'tempo', filter = 'all';
 const speed = $('#speed'), pitch = $('#pitch'), gain = $('#gain');
 const showSpeed = () => { $('#speedVal').textContent = (+speed.value).toFixed(2) + 'x'; };
 const showPitch = () => { $('#pitchVal').textContent = (pitch.value > 0 ? '+' : '') + pitch.value + ' st'; };
-const showGain = () => { $('#gainVal').textContent = (gain.value > 0 ? '+' : '') + gain.value + ' dB'; };
+const showGain = () => { const t = (gain.value > 0 ? '+' : '') + gain.value + ' dB'; $('#gainVal').textContent = t; $('#speedGain').textContent = t; };
 function setMode(v) { mode = v; document.querySelectorAll('#mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
 function markPreset() {
-  document.querySelectorAll('#fx button').forEach((b) => b.classList.toggle('on',
+  document.querySelectorAll('.ac-fx button').forEach((b) => b.classList.toggle('on',
     +b.dataset.s === +speed.value && +b.dataset.p === +pitch.value && b.dataset.m === mode));
   summarize();
 }
 // one-line summary next to "02 Sound", so the settings can be folded away
 function summarize() {
-  const fx = document.querySelector('#fx button.on');
+  const fx = document.querySelector('.ac-fx button.on');
   const p = +pitch.value, g = +gain.value;
-  $('#soundSummary').textContent = [fx ? fx.textContent : 'Custom', (+speed.value).toFixed(2) + 'x',
+  $('#soundSummary').textContent = [fx ? fx.dataset.name : 'Custom', (+speed.value).toFixed(2) + 'x',
     (p > 0 ? '+' : '') + p + ' st', (g > 0 ? '+' : '') + g + ' dB'].join(' · ');
 }
 speed.oninput = () => { showSpeed(); markPreset(); };
@@ -279,7 +279,7 @@ soundToggle.onclick = () => {
 document.querySelectorAll('[data-speed]').forEach((b) => { b.onclick = () => { speed.value = b.dataset.speed; showSpeed(); markPreset(); }; });
 document.querySelectorAll('[data-pv]').forEach((b) => { b.onclick = () => { pitch.value = b.dataset.pv; showPitch(); markPreset(); }; });
 document.querySelectorAll('#mode button').forEach((b) => { b.onclick = () => { setMode(b.dataset.v); markPreset(); }; });
-document.querySelectorAll('#fx button').forEach((b) => {
+document.querySelectorAll('.ac-fx button').forEach((b) => {
   b.onclick = () => { speed.value = b.dataset.s; pitch.value = b.dataset.p; setMode(b.dataset.m); showSpeed(); showPitch(); markPreset(); };
 });
 markPreset();
