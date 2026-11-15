@@ -53,7 +53,9 @@
 <!-- Body of /audio (Audio Converter). scripts/build-pages.ps1 wraps it in the site header and footer and writes audio.html.
      The converter runs in the visitor's browser (assets/audio.js); Roblox calls go through the Worker (/api/roblox/*).
      Console layout: a sidebar picks one panel (Convert Audio, History, Tutorial, Roblox Account with the plan);
-     the welcome line and the four account cards sit above every panel. -->
+     the welcome line and the four account cards sit above every panel.
+     History also has an in-game playback card (#playback) with the Roblox PlaybackSpeed for each preset;
+     its small style and script blocks are at the bottom of this file. -->
 <section class="ac-console grid-bg">
   <aside class="ac-side" aria-label="Audio Converter sections">
     <div class="ac-side-title">Audio Converter</div>
@@ -158,13 +160,13 @@
           <div class="ac-label">Presets</div>
           <div class="ac-chips ac-fx ac-presets">
             <button type="button" data-s="2.1" data-m="pitch" data-p="0" data-name="Slow" data-gain="-6">Slow <em>2.1x</em></button>
-            <button type="button" data-s="2.3" data-m="tempo" data-p="0" data-name="Default" data-gain="-8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
+            <button type="button" data-s="2.3" data-m="pitch" data-p="0" data-name="Default" data-gain="-8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>Default <em>2.3x</em></button>
             <button type="button" data-s="2.5" data-m="pitch" data-p="0" data-name="Fast" data-gain="-10">Fast <em>2.5x</em></button>
             <button type="button" data-s="2.7" data-m="pitch" data-p="0" data-name="Faster" data-gain="-12">Faster <em>2.7x</em></button>
             <button type="button" data-s="2.9" data-m="pitch" data-p="0" data-name="Ultra" data-gain="-14">Ultra <em>2.9x</em></button>
           </div>
 
-          <!-- pitch isn't shown: presets set it (always 0) and whether pitch follows speed -->
+          <!-- pitch isn't shown: presets set it (always 0). Every preset uses data-m="pitch", so pitch changes with speed (like a record sped up) and PlaybackSpeed in Roblox brings both back to normal. -->
           <input type="hidden" id="pitch" value="0">
 
           <label class="ac-label" for="speed">Speed <em id="speedVal">1.20x</em></label>
@@ -205,6 +207,51 @@
         </div>
         <div id="jobs"></div>
         <p class="ac-note">This list is saved in this browser only. Converted files stay until you close or reload the page, so download them if you want to keep them.</p>
+      </div>
+
+      <!-- in-game playback: recommended Sound.PlaybackSpeed per preset (1 / preset speed).
+           Hidden until a conversion shows up in #jobs; the script at the bottom of this file runs it. -->
+      <div class="ac-card ac-play" id="playback" hidden>
+        <div class="ac-card-head ac-term-head">
+          <span class="ac-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="ac-term-name">3iaw &mdash; in-game playback</span>
+          <span class="ac-plan-pill" id="playPill">PlaybackSpeed</span>
+        </div>
+        <div class="ac-play-body">
+          <p class="ac-play-last" id="playLast">Your latest conversion: <b>Default &middot; 2.3x</b> &rarr; set PlaybackSpeed to <b>0.43</b></p>
+          <p class="ac-small">The converter speeds the audio up. In Roblox Studio, set the Sound's <code>PlaybackSpeed</code> to the value for the preset you used so it plays back at normal speed in game.</p>
+
+          <div class="ac-play-table" role="table" aria-label="Recommended PlaybackSpeed for each preset">
+            <div class="ac-play-row head" role="row">
+              <span role="columnheader">Preset</span><span role="columnheader">Converted at</span><span role="columnheader">PlaybackSpeed</span><span role="columnheader"><span class="sr">Copy</span></span>
+            </div>
+            <div class="ac-play-row" role="row" data-s="2.1" data-name="Slow">
+              <span role="cell">Slow</span><span role="cell">2.1x</span><b role="cell" class="ac-play-v">0.48</b><span role="cell"><button type="button" class="ac-btn" data-copy>Copy</button></span>
+            </div>
+            <div class="ac-play-row" role="row" data-s="2.3" data-name="Default">
+              <span role="cell">Default <em class="ac-play-tag">recommended</em></span><span role="cell">2.3x</span><b role="cell" class="ac-play-v">0.43</b><span role="cell"><button type="button" class="ac-btn" data-copy>Copy</button></span>
+            </div>
+            <div class="ac-play-row" role="row" data-s="2.5" data-name="Fast">
+              <span role="cell">Fast</span><span role="cell">2.5x</span><b role="cell" class="ac-play-v">0.40</b><span role="cell"><button type="button" class="ac-btn" data-copy>Copy</button></span>
+            </div>
+            <div class="ac-play-row" role="row" data-s="2.7" data-name="Faster">
+              <span role="cell">Faster</span><span role="cell">2.7x</span><b role="cell" class="ac-play-v">0.37</b><span role="cell"><button type="button" class="ac-btn" data-copy>Copy</button></span>
+            </div>
+            <div class="ac-play-row" role="row" data-s="2.9" data-name="Ultra">
+              <span role="cell">Ultra</span><span role="cell">2.9x</span><b role="cell" class="ac-play-v">0.34</b><span role="cell"><button type="button" class="ac-btn" data-copy>Copy</button></span>
+            </div>
+          </div>
+
+          <div class="ac-label">Roblox Studio (Luau)</div>
+          <div class="ac-play-code">
+            <pre><code id="playCode">local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://YOUR_AUDIO_ID"
+sound.PlaybackSpeed = 0.43
+sound.Parent = workspace
+sound:Play()</code></pre>
+            <button type="button" class="ac-btn" id="copyCode">Copy</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -329,7 +376,7 @@
           <li><b>Choose your audio</b><span>Use audio you made or have permission to use, or a track from Roblox's own audio library.</span></li>
           <li><b>Pick a preset</b><span>Default keeps the sound as it is. Adjust Speed, Amplify and Max Duration if you need to.</span></li>
           <li><b>Convert &amp; upload</b><span>The audio goes to your account and Roblox reviews it. Follow the status in History.</span></li>
-          <li><b>Use it in your game</b><span>When it's approved, copy the link or ID and set it as a Sound's SoundId in Roblox Studio.</span></li>
+          <li><b>Use it in your game</b><span>When it's approved, copy the link or ID and set it as a Sound's SoundId in Roblox Studio. Then set PlaybackSpeed for your preset (Default: 0.43). History lists the value for every preset.</span></li>
         </ol>
       </div>
     </div>
@@ -338,6 +385,105 @@
 </section>
 
 <div class="ac-toast" id="toast" role="status" aria-live="polite"></div>
+
+<style>
+  .ac-play { margin-top: 18px; }
+  .ac-play-body { padding: 16px 18px 18px; display: grid; gap: 12px; }
+  .ac-play-last { margin: 0; font-size: 15px; }
+  .ac-play-last b { font-weight: 700; }
+  .ac-play-table { display: grid; border: 1px solid rgba(127,127,127,.25); border-radius: 10px; overflow: hidden; }
+  .ac-play-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid rgba(127,127,127,.15); }
+  .ac-play-row:first-child { border-top: 0; }
+  .ac-play-row.head { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
+  .ac-play-row.on { background: rgba(127,127,127,.12); box-shadow: inset 3px 0 0 currentColor; }
+  .ac-play-v { font-variant-numeric: tabular-nums; font-size: 16px; }
+  .ac-play-tag { font-style: normal; font-size: 11px; padding: 1px 7px; margin-left: 6px; border-radius: 999px; border: 1px solid currentColor; opacity: .75; white-space: nowrap; }
+  .ac-play-code { position: relative; }
+  .ac-play-code pre { margin: 0; padding: 12px 14px; border-radius: 10px; background: rgba(0,0,0,.35); overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  .ac-play-code .ac-btn { position: absolute; top: 8px; right: 8px; }
+  .ac-play .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 560px) {
+    .ac-play-row { grid-template-columns: 1.3fr .9fr .9fr auto; gap: 6px; padding: 8px 10px; font-size: 14px; }
+  }
+</style>
+
+<script>
+/* In-game playback card (History panel).
+   Recommended Sound.PlaybackSpeed = 1 / conversion speed, rounded to 2 decimals
+   (Slow 2.1x -> 0.48, Default 2.3x -> 0.43, Fast 2.5x -> 0.40, Faster 2.7x -> 0.37, Ultra 2.9x -> 0.34).
+   The card appears once a conversion is in #jobs and highlights the speed used for the latest one. */
+(function () {
+  var card = document.getElementById('playback');
+  var jobs = document.getElementById('jobs');
+  var form = document.getElementById('acForm');
+  var speedIn = document.getElementById('speed');
+  if (!card || !jobs) return;
+
+  var KEY = 'ac-last-speed';
+  var rows = card.querySelectorAll('.ac-play-row[data-s]');
+  var lastLine = document.getElementById('playLast');
+  var code = document.getElementById('playCode');
+
+  function rec(s) { return (Math.round(100 / s) / 100).toFixed(2); }
+  function load() { try { var v = parseFloat(localStorage.getItem(KEY)); return v > 0 ? v : null; } catch (e) { return null; } }
+  function save(v) { try { localStorage.setItem(KEY, String(v)); } catch (e) {} }
+
+  // fill the values from data-s so they always match the presets
+  rows.forEach(function (r) { r.querySelector('.ac-play-v').textContent = rec(parseFloat(r.dataset.s)); });
+
+  function render() {
+    var s = load() || 2.3;
+    var match = null;
+    rows.forEach(function (r) {
+      var on = Math.abs(parseFloat(r.dataset.s) - s) < 0.001;
+      r.classList.toggle('on', on);
+      if (on) match = r;
+    });
+    var name = match ? match.dataset.name : 'Custom';
+    var v = rec(s);
+    lastLine.innerHTML = 'Your latest conversion: <b>' + name + ' &middot; ' + (+s.toFixed(2)) + 'x</b> &rarr; set PlaybackSpeed to <b>' + v + '</b>';
+    code.textContent = code.textContent.replace(/PlaybackSpeed = [\d.]+/, 'PlaybackSpeed = ' + v);
+  }
+
+  function update() {
+    card.hidden = jobs.children.length === 0 && !load();
+    if (!card.hidden) render();
+  }
+
+  // remember the speed used for each conversion
+  if (form && speedIn) {
+    form.addEventListener('submit', function () {
+      var s = parseFloat(speedIn.value);
+      if (s > 0) save(s);
+      update();
+    }, true);
+  }
+
+  new MutationObserver(update).observe(jobs, { childList: true });
+  update();
+
+  function copy(text, btn) {
+    function done() { var t = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = t; }, 1200); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      ta.remove();
+    }
+  }
+
+  card.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.hasAttribute('data-copy')) copy(b.closest('.ac-play-row').querySelector('.ac-play-v').textContent, b);
+    else if (b.id === 'copyCode') copy(code.textContent, b);
+  });
+})();
+</script>
 
 </main>
 
