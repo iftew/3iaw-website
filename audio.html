@@ -422,6 +422,8 @@ sound:Play()</code></pre>
   .ac-play .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* source picker + YouTube link box */
   .ac-src { margin-bottom: 10px; }
+  /* display rules (here and in the site CSS) would otherwise override the hidden attribute */
+  .ac-yt[hidden], .ac-yt-info[hidden], .ac-drop[hidden] { display: none !important; }
   .ac-yt { display: grid; gap: 10px; padding: 14px; border: 1px dashed rgba(127,127,127,.4); border-radius: 12px; }
   .ac-yt-row { display: flex; gap: 8px; }
   .ac-yt-row input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; font: inherit; }
