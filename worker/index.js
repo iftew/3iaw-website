@@ -341,6 +341,77 @@ async function orders(req, env) {
   return json({ error: 'Method not allowed.' }, 405);
 }
 
+
+// ---------- YouTube audio extraction (Render service) ----------
+// The browser calls /api/youtube on this Worker. The Worker validates the request
+// and forwards only a YouTube video ID to the private Render service. Keep the
+// Render URL and shared token in Worker secrets; never expose the token to browsers.
+async function youtubeAudio(req, env) {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  if (req.headers.get('sec-fetch-site') !== 'same-origin') return json({ error: 'Not allowed.' }, 403);
+
+  let body;
+  try { body = await req.json(); } catch { return json({ error: 'Send a valid YouTube link.' }, 400); }
+  let videoId = '';
+  try {
+    const u = new URL(String(body.url || ''));
+    const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
+    if (host === 'youtu.be') videoId = u.pathname.split('/').filter(Boolean)[0] || '';
+    else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      videoId = u.searchParams.get('v') || (u.pathname.match(/^\/(?:shorts|live|embed|v)\/([^/?#]+)/) || [])[1] || '';
+    }
+  } catch { /* invalid URL */ }
+  if (!/^[\w-]{11}$/.test(videoId)) return json({ error: 'Paste a valid YouTube video link.' }, 400);
+
+  const start = Number(body.start ?? 0);
+  const maxDuration = Number(body.maxDur ?? 400);
+  if (!Number.isFinite(start) || start < 0 || start > 21600 ||
+      !Number.isFinite(maxDuration) || maxDuration < 1 || maxDuration > 400) {
+    return json({ error: 'Invalid trim settings. Audio clips can be up to 400 seconds.' }, 400);
+  }
+
+  const service = String(env.YOUTUBE_SERVICE_URL || '').replace(/\/+$/, '');
+  const token = String(env.YOUTUBE_SERVICE_TOKEN || '');
+  if (!service || !token) {
+    return json({ error: 'YouTube audio service is not configured yet. Please try again later.' }, 503);
+  }
+  if (!/^https:\/\//i.test(service)) return json({ error: 'YouTube audio service URL must use HTTPS.' }, 503);
+
+  let upstream;
+  try {
+    upstream = await fetch(service + '/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ video_id: videoId, start, max_duration: maxDuration }),
+      signal: AbortSignal.timeout(240000),
+    });
+  } catch (e) {
+    console.error('YouTube service connection failed', e);
+    return json({ error: 'Could not reach the audio extraction service. Please try again shortly.' }, 502);
+  }
+
+  if (!upstream.ok) {
+    let message = 'Could not extract audio from that YouTube video.';
+    try { const data = await upstream.json(); if (data && (data.error || data.detail)) message = String(data.error || data.detail).slice(0, 240); } catch {}
+    return json({ error: message }, upstream.status >= 500 ? 502 : upstream.status);
+  }
+  const type = upstream.headers.get('content-type') || '';
+  if (!type.toLowerCase().startsWith('audio/')) {
+    return json({ error: 'The audio service returned an unexpected file format.' }, 502);
+  }
+  const headers = new Headers({
+    'Content-Type': 'audio/mpeg',
+    'Content-Disposition': 'attachment; filename="youtube-audio.mp3"',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  const title = upstream.headers.get('X-Title');
+  if (title) headers.set('X-Title', title);
+  const length = upstream.headers.get('Content-Length');
+  if (length && /^\d+$/.test(length)) headers.set('Content-Length', length);
+  return new Response(upstream.body, { status: 200, headers });
+}
+
 // ---------- Audio Converter (/audio): Roblox Open Cloud calls for the visitor ----------
 // Browsers can't call apis.roblox.com directly (no CORS), so the page sends its calls here and they are
 // passed on unchanged. The visitor's own API key comes in the X-Roblox-Key header; it is never stored or logged.
@@ -632,6 +703,7 @@ async function robloxAudio(req, env, path) {
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname;
+    if (path === '/api/youtube') return youtubeAudio(req, env);
     if (path.startsWith('/api/roblox/')) return robloxAudio(req, env, path);
     if (path.startsWith('/api/auth/')) return auth(req, env, path);
     if (path === '/api/plan-order') return planOrder(req, env);
