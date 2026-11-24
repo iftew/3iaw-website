@@ -12,3 +12,4 @@ package-lock.json
 scripts
 youtube
 render-youtube-service
+youtube-helper

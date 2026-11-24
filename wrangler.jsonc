@@ -23,6 +23,6 @@
   ],
   // Discord login for the Audio Converter (the secret DISCORD_CLIENT_SECRET is set in the Cloudflare dashboard)
   "vars": { "DISCORD_CLIENT_ID": "1571479638570434590" },
-  // YouTube links in the Audio Converter go through tunelio.dev (the secret TUNELIO_API_KEY is set in the Cloudflare dashboard)
+  // YouTube links in the Audio Converter come from the owner's PC at yt.3iaw.com (youtube-helper/setup.py sets the secret YOUTUBE_HELPER_TOKEN)
   "observability": { "enabled": true }
 }

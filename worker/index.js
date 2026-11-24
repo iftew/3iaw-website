@@ -17,7 +17,7 @@
 //   GET    /api/auth/me             who is logged in, and their free uploads left or plan end date
 //   POST   /api/auth/logout         end the session
 //   POST   /api/plan-order          buy an Audio Converter plan for the logged-in Discord account
-//   POST   /api/youtube             Audio Converter: the audio of a YouTube link as a file (through Tunelio)
+//   POST   /api/youtube             Audio Converter: the audio of a YouTube link as a file (from the owner's PC)
 //
 // Audio Converter plans: uploading needs a Discord login, and each Discord account gets FREE_UPLOADS uploads.
 // After that it needs a plan, bought in the converter (bKash / Nagad). Pressing "Confirm payment" in
@@ -33,7 +33,7 @@
 //          session:<sid> (Discord login), uses:discord:<id> (uploads made), sub:discord:<id> ({grants}),
 //          grant:<orderId> (which account a plan order unlocked)
 // Secret DISCORD_CLIENT_SECRET and var DISCORD_CLIENT_ID: the Discord app used for logging in.
-// Secret TUNELIO_API_KEY: the tunelio.dev key that /api/youtube spends credits with.
+// Secret YOUTUBE_HELPER_TOKEN: the token /api/youtube shows the helper on the owner's PC (youtube-helper/setup.py sets it).
 
 import { EmailMessage } from 'cloudflare:email';
 
@@ -344,26 +344,17 @@ async function orders(req, env) {
 }
 
 
-// ---------- YouTube audio (Tunelio) ----------
-// The Audio Converter's "YouTube link" source. The browser posts a link to /api/youtube; the Worker asks
-// Tunelio (tunelio.dev) for a signed download link to the video's audio and streams that file back.
+// ---------- YouTube audio (the owner's PC) ----------
+// The Audio Converter's "YouTube link" source. YouTube refuses requests from cloud servers like this Worker
+// but answers a home connection, so the audio is fetched by a small helper on the owner's PC
+// (youtube-helper/ in this repo). The browser posts a link to /api/youtube; the Worker asks the helper at
+// YT_HELPER, which reaches the PC through a Cloudflare Tunnel, and streams the file back.
 // The page trims and converts it like an uploaded file (assets/audio.js), so nothing is trimmed here.
-// m4a is the audio track as YouTube published it: no re-encoding, so it is quick and its size is known
-// before the download starts (Tunelio's mp3 is encoded while it streams and has neither).
-// Every link costs 10 Tunelio credits. The key is the secret TUNELIO_API_KEY; it never reaches browsers.
-const TUNELIO = 'https://tunelio.dev';
-const YT_MAX_BYTES = 40 * 1024 * 1024; // about 40 minutes; the browser has to download and decode all of it
-
-// what the visitor is told when Tunelio says no (the real answer goes to the Worker's logs) -> [message, status]
-function tunelioError(status) {
-  if (status === 400) return ['That YouTube link could not be read. Check the link and try again.', 400];
-  if (status === 404) return ['That video does not exist, is private, or was deleted.', 404];
-  if (status === 429) return ['Too many YouTube requests right now. Try again in a minute.', 429];
-  // 401/403: the key is wrong; 402: the credits ran out. Only the owner can fix those.
-  if (status === 401 || status === 402 || status === 403) return ['YouTube links are unavailable right now. Upload the audio file instead.', 503];
-  if (status === 503) return ['YouTube audio is temporarily unavailable. Try again later, or upload the audio file instead.', 503];
-  return ['Could not get audio from that YouTube video.', 502];
-}
+// When the PC is off the tunnel is down, and visitors are told to upload a file instead.
+// The helper only answers requests that carry the token in the secret YOUTUBE_HELPER_TOKEN.
+const YT_HELPER = 'https://yt.3iaw.com';
+const YT_MAX_BYTES = 40 * 1024 * 1024; // about 40 minutes; the browser has to download and decode all of it (the helper has the same limit)
+const YT_OFFLINE = 'YouTube links are offline right now. Upload the audio file instead, or try again later.';
 
 const tooLong = (bytes) =>
   `That video is too long for a YouTube link (its audio is ${(bytes / 1048576).toFixed(1)} MB, the limit is ${YT_MAX_BYTES / 1048576} MB). Use a shorter video, or upload the audio file instead.`;
@@ -397,66 +388,54 @@ async function youtubeAudio(req, env) {
   } catch { /* invalid URL */ }
   if (!/^[\w-]{11}$/.test(videoId)) return json({ error: 'Paste a valid YouTube video link.' }, 400);
 
-  const key = String(env.TUNELIO_API_KEY || '');
-  if (!key) return json({ error: 'YouTube links are not set up yet. Upload the audio file instead.' }, 503);
+  const token = String(env.YOUTUBE_HELPER_TOKEN || '');
+  if (!token) return json({ error: 'YouTube links are not set up yet. Upload the audio file instead.' }, 503);
 
-  // 1. a signed link to the audio; Tunelio answers in this same request, there is nothing to poll
-  let made, text = '';
-  try {
-    const query = new URLSearchParams({ url: 'https://www.youtube.com/watch?v=' + videoId, quality: 'm4a' });
-    made = await fetch(TUNELIO + '/create?' + query, {
-      headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(60000),
-    });
-    text = await made.text();
-  } catch (e) {
-    console.error('Tunelio /create did not answer', e);
-    return json({ error: 'Could not reach the YouTube audio service. Please try again shortly.' }, 502);
-  }
-  let data = null;
-  try { data = JSON.parse(text); } catch { /* not JSON: handled as a failure below */ }
-  const link = data && typeof data.url === 'string' ? data.url : '';
-  if (!made.ok || !data || (data.status && data.status !== 'ok') || !/^https:\/\//i.test(link)) {
-    console.error('Tunelio /create failed', made.status, text.slice(0, 300));
-    const [message, status] = tunelioError(made.status);
-    return json({ error: message }, status);
-  }
-  const size = Number(data.file_size) || 0;
-  if (size > YT_MAX_BYTES) return json({ error: tooLong(size) }, 413);
-
-  // 2. the file itself, passed straight through to the browser
-  const failed = 'The audio download could not be started. Please try again.';
+  // the helper downloads the audio from YouTube first and answers after that, so long videos take a while
   const giveUp = new AbortController();
-  const timer = setTimeout(() => giveUp.abort(), 60000); // only the wait for the download to start
-  let media;
-  try { media = await fetch(link, { signal: giveUp.signal }); }
+  const timer = setTimeout(() => giveUp.abort(), 120000); // only the wait for its answer, not the download to the visitor
+  let res;
+  try { res = await fetch(YT_HELPER + '/audio/' + videoId, { headers: { 'Authorization': 'Bearer ' + token }, signal: giveUp.signal }); }
   catch (e) {
-    console.error('Tunelio download did not start', e);
-    return json({ error: failed }, 502);
+    console.error('YouTube helper did not answer', e);
+    return json({ error: YT_OFFLINE }, 503);
   } finally { clearTimeout(timer); }
-  if (!media.ok || !media.body) {
-    console.error('Tunelio download failed', media.status);
-    if (media.body) media.body.cancel().catch(() => {});
-    return json({ error: failed }, 502);
+
+  // Every answer of the helper carries X-Helper. Without it, this is Cloudflare saying the PC can't be reached (it is off).
+  if (res.headers.get('X-Helper') !== '1') {
+    console.error('YouTube helper unreachable', res.status);
+    if (res.body) res.body.cancel().catch(() => {});
+    return json({ error: YT_OFFLINE }, 503);
   }
-  const length = Number(media.headers.get('Content-Length')) || 0;
+  if (!res.ok) {
+    let message = '';
+    try { message = String((await res.json()).error || ''); } catch { /* not JSON */ }
+    if (res.status === 401) {
+      // the token here and the one on the PC differ: run youtube-helper/setup.py again
+      console.error('YouTube helper refused the token');
+      return json({ error: 'YouTube links are not set up correctly. Upload the audio file instead.' }, 503);
+    }
+    console.error('YouTube helper said no', res.status, message);
+    return json({ error: (message || 'Could not get audio from that YouTube video.').slice(0, 300) }, res.status >= 500 ? 502 : res.status);
+  }
+  if (!res.body) return json({ error: 'Could not get audio from that YouTube video.' }, 502);
+  const length = Number(res.headers.get('Content-Length')) || 0;
   if (length > YT_MAX_BYTES) {
-    media.body.cancel().catch(() => {});
+    res.body.cancel().catch(() => {});
     return json({ error: tooLong(length) }, 413);
   }
 
+  const type = (res.headers.get('Content-Type') || '').toLowerCase();
   const headers = new Headers({
-    'Content-Type': 'audio/mp4',
-    'Content-Disposition': 'attachment; filename="youtube-audio.m4a"',
+    'Content-Type': /^audio\/[\w.+-]+$/.test(type) ? type : 'audio/mp4',
+    'Content-Disposition': 'attachment; filename="youtube-audio"',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
   });
-  // the video's title for the page: Tunelio's suggested filename without its extension, URL-encoded
-  const title = [...String(data.filename || '').replace(/\.[a-z0-9]{2,4}$/i, '').trim()].slice(0, 150).join('');
-  try { if (title) headers.set('X-Title', encodeURIComponent(title)); } catch { /* the page falls back to the video ID */ }
+  const title = res.headers.get('X-Title') || ''; // the video's title, URL-encoded by the helper
+  if (/^[\w.~%-]{1,2000}$/.test(title)) headers.set('X-Title', title);
   if (length) headers.set('Content-Length', String(length));
-  console.log('YouTube audio', videoId, length || size || 'unknown', 'bytes. Tunelio credits left:', made.headers.get('X-Credits-Remaining') || 'unknown');
-  return new Response(length ? media.body : capped(media.body, YT_MAX_BYTES), { status: 200, headers });
+  return new Response(length ? res.body : capped(res.body, YT_MAX_BYTES), { status: 200, headers });
 }
 
 // ---------- Audio Converter (/audio): Roblox Open Cloud calls for the visitor ----------
