@@ -11,3 +11,4 @@ package-lock.json
 .github
 scripts
 youtube
+render-youtube-service

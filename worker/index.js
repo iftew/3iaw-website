@@ -17,6 +17,7 @@
 //   GET    /api/auth/me             who is logged in, and their free uploads left or plan end date
 //   POST   /api/auth/logout         end the session
 //   POST   /api/plan-order          buy an Audio Converter plan for the logged-in Discord account
+//   POST   /api/youtube             Audio Converter: the audio of a YouTube link as a file (through Tunelio)
 //
 // Audio Converter plans: uploading needs a Discord login, and each Discord account gets FREE_UPLOADS uploads.
 // After that it needs a plan, bought in the converter (bKash / Nagad). Pressing "Confirm payment" in
@@ -32,6 +33,7 @@
 //          session:<sid> (Discord login), uses:discord:<id> (uploads made), sub:discord:<id> ({grants}),
 //          grant:<orderId> (which account a plan order unlocked)
 // Secret DISCORD_CLIENT_SECRET and var DISCORD_CLIENT_ID: the Discord app used for logging in.
+// Secret TUNELIO_API_KEY: the tunelio.dev key that /api/youtube spends credits with.
 
 import { EmailMessage } from 'cloudflare:email';
 
@@ -342,10 +344,42 @@ async function orders(req, env) {
 }
 
 
-// ---------- YouTube audio extraction (Render service) ----------
-// The browser calls /api/youtube on this Worker. The Worker validates the request
-// and forwards only a YouTube video ID to the private Render service. Keep the
-// Render URL and shared token in Worker secrets; never expose the token to browsers.
+// ---------- YouTube audio (Tunelio) ----------
+// The Audio Converter's "YouTube link" source. The browser posts a link to /api/youtube; the Worker asks
+// Tunelio (tunelio.dev) for a signed download link to the video's audio and streams that file back.
+// The page trims and converts it like an uploaded file (assets/audio.js), so nothing is trimmed here.
+// m4a is the audio track as YouTube published it: no re-encoding, so it is quick and its size is known
+// before the download starts (Tunelio's mp3 is encoded while it streams and has neither).
+// Every link costs 10 Tunelio credits. The key is the secret TUNELIO_API_KEY; it never reaches browsers.
+const TUNELIO = 'https://tunelio.dev';
+const YT_MAX_BYTES = 40 * 1024 * 1024; // about 40 minutes; the browser has to download and decode all of it
+
+// what the visitor is told when Tunelio says no (the real answer goes to the Worker's logs) -> [message, status]
+function tunelioError(status) {
+  if (status === 400) return ['That YouTube link could not be read. Check the link and try again.', 400];
+  if (status === 404) return ['That video does not exist, is private, or was deleted.', 404];
+  if (status === 429) return ['Too many YouTube requests right now. Try again in a minute.', 429];
+  // 401/403: the key is wrong; 402: the credits ran out. Only the owner can fix those.
+  if (status === 401 || status === 402 || status === 403) return ['YouTube links are unavailable right now. Upload the audio file instead.', 503];
+  if (status === 503) return ['YouTube audio is temporarily unavailable. Try again later, or upload the audio file instead.', 503];
+  return ['Could not get audio from that YouTube video.', 502];
+}
+
+const tooLong = (bytes) =>
+  `That video is too long for a YouTube link (its audio is ${(bytes / 1048576).toFixed(1)} MB, the limit is ${YT_MAX_BYTES / 1048576} MB). Use a shorter video, or upload the audio file instead.`;
+
+// for a download whose size wasn't announced: stop passing it on once it is over the limit
+function capped(stream, max) {
+  let seen = 0;
+  return stream.pipeThrough(new TransformStream({
+    transform(chunk, ctl) {
+      seen += chunk.byteLength;
+      if (seen > max) ctl.error(new Error('The audio is over the size limit.'));
+      else ctl.enqueue(chunk);
+    },
+  }));
+}
+
 async function youtubeAudio(req, env) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
   if (req.headers.get('sec-fetch-site') !== 'same-origin') return json({ error: 'Not allowed.' }, 403);
@@ -354,7 +388,7 @@ async function youtubeAudio(req, env) {
   try { body = await req.json(); } catch { return json({ error: 'Send a valid YouTube link.' }, 400); }
   let videoId = '';
   try {
-    const u = new URL(String(body.url || ''));
+    const u = new URL(String((body && body.url) || ''));
     const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
     if (host === 'youtu.be') videoId = u.pathname.split('/').filter(Boolean)[0] || '';
     else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
@@ -363,53 +397,66 @@ async function youtubeAudio(req, env) {
   } catch { /* invalid URL */ }
   if (!/^[\w-]{11}$/.test(videoId)) return json({ error: 'Paste a valid YouTube video link.' }, 400);
 
-  const start = Number(body.start ?? 0);
-  const maxDuration = Number(body.maxDur ?? 400);
-  if (!Number.isFinite(start) || start < 0 || start > 21600 ||
-      !Number.isFinite(maxDuration) || maxDuration < 1 || maxDuration > 400) {
-    return json({ error: 'Invalid trim settings. Audio clips can be up to 400 seconds.' }, 400);
-  }
+  const key = String(env.TUNELIO_API_KEY || '');
+  if (!key) return json({ error: 'YouTube links are not set up yet. Upload the audio file instead.' }, 503);
 
-  const service = String(env.YOUTUBE_SERVICE_URL || '').replace(/\/+$/, '');
-  const token = String(env.YOUTUBE_SERVICE_TOKEN || '');
-  if (!service || !token) {
-    return json({ error: 'YouTube audio service is not configured yet. Please try again later.' }, 503);
-  }
-  if (!/^https:\/\//i.test(service)) return json({ error: 'YouTube audio service URL must use HTTPS.' }, 503);
-
-  let upstream;
+  // 1. a signed link to the audio; Tunelio answers in this same request, there is nothing to poll
+  let made, text = '';
   try {
-    upstream = await fetch(service + '/extract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ video_id: videoId, start, max_duration: maxDuration }),
-      signal: AbortSignal.timeout(240000),
+    const query = new URLSearchParams({ url: 'https://www.youtube.com/watch?v=' + videoId, quality: 'm4a' });
+    made = await fetch(TUNELIO + '/create?' + query, {
+      headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(60000),
     });
+    text = await made.text();
   } catch (e) {
-    console.error('YouTube service connection failed', e);
-    return json({ error: 'Could not reach the audio extraction service. Please try again shortly.' }, 502);
+    console.error('Tunelio /create did not answer', e);
+    return json({ error: 'Could not reach the YouTube audio service. Please try again shortly.' }, 502);
+  }
+  let data = null;
+  try { data = JSON.parse(text); } catch { /* not JSON: handled as a failure below */ }
+  const link = data && typeof data.url === 'string' ? data.url : '';
+  if (!made.ok || !data || (data.status && data.status !== 'ok') || !/^https:\/\//i.test(link)) {
+    console.error('Tunelio /create failed', made.status, text.slice(0, 300));
+    const [message, status] = tunelioError(made.status);
+    return json({ error: message }, status);
+  }
+  const size = Number(data.file_size) || 0;
+  if (size > YT_MAX_BYTES) return json({ error: tooLong(size) }, 413);
+
+  // 2. the file itself, passed straight through to the browser
+  const failed = 'The audio download could not be started. Please try again.';
+  const giveUp = new AbortController();
+  const timer = setTimeout(() => giveUp.abort(), 60000); // only the wait for the download to start
+  let media;
+  try { media = await fetch(link, { signal: giveUp.signal }); }
+  catch (e) {
+    console.error('Tunelio download did not start', e);
+    return json({ error: failed }, 502);
+  } finally { clearTimeout(timer); }
+  if (!media.ok || !media.body) {
+    console.error('Tunelio download failed', media.status);
+    if (media.body) media.body.cancel().catch(() => {});
+    return json({ error: failed }, 502);
+  }
+  const length = Number(media.headers.get('Content-Length')) || 0;
+  if (length > YT_MAX_BYTES) {
+    media.body.cancel().catch(() => {});
+    return json({ error: tooLong(length) }, 413);
   }
 
-  if (!upstream.ok) {
-    let message = 'Could not extract audio from that YouTube video.';
-    try { const data = await upstream.json(); if (data && (data.error || data.detail)) message = String(data.error || data.detail).slice(0, 240); } catch {}
-    return json({ error: message }, upstream.status >= 500 ? 502 : upstream.status);
-  }
-  const type = upstream.headers.get('content-type') || '';
-  if (!type.toLowerCase().startsWith('audio/')) {
-    return json({ error: 'The audio service returned an unexpected file format.' }, 502);
-  }
   const headers = new Headers({
-    'Content-Type': 'audio/mpeg',
-    'Content-Disposition': 'attachment; filename="youtube-audio.mp3"',
+    'Content-Type': 'audio/mp4',
+    'Content-Disposition': 'attachment; filename="youtube-audio.m4a"',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
   });
-  const title = upstream.headers.get('X-Title');
-  if (title) headers.set('X-Title', title);
-  const length = upstream.headers.get('Content-Length');
-  if (length && /^\d+$/.test(length)) headers.set('Content-Length', length);
-  return new Response(upstream.body, { status: 200, headers });
+  // the video's title for the page: Tunelio's suggested filename without its extension, URL-encoded
+  const title = [...String(data.filename || '').replace(/\.[a-z0-9]{2,4}$/i, '').trim()].slice(0, 150).join('');
+  try { if (title) headers.set('X-Title', encodeURIComponent(title)); } catch { /* the page falls back to the video ID */ }
+  if (length) headers.set('Content-Length', String(length));
+  console.log('YouTube audio', videoId, length || size || 'unknown', 'bytes. Tunelio credits left:', made.headers.get('X-Credits-Remaining') || 'unknown');
+  return new Response(length ? media.body : capped(media.body, YT_MAX_BYTES), { status: 200, headers });
 }
 
 // ---------- Audio Converter (/audio): Roblox Open Cloud calls for the visitor ----------

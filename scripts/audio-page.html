@@ -467,10 +467,11 @@ sound:Play()</code></pre>
 
 /* YouTube link source (Convert panel).
    The browser can't download from YouTube itself, so the Worker fetches the audio:
-     POST /api/youtube  { url, start, maxDur }  ->  audio bytes (audio/*),
+     POST /api/youtube  { url }  ->  the video's whole audio (audio/*),
      with an optional X-Title header (URL-encoded video title).
    The audio is then handed to #fileIn as if it was chosen from the device,
-   so assets/audio.js converts and uploads it exactly like a normal file. */
+   so assets/audio.js trims, converts and uploads it exactly like a normal file.
+   Trim start and Max Duration are applied there, once, so they are not sent to the Worker. */
 (function () {
   var pick = document.getElementById('srcPick');
   var box = document.getElementById('ytBox');
@@ -536,13 +537,10 @@ sound:Play()</code></pre>
     state.textContent = 'Downloading audio…';
     setBusy(true);
 
-    var start = parseFloat((document.getElementById('trimStart') || {}).value) || 0;
-    var maxDur = parseFloat((document.getElementById('maxDur') || {}).value) || 400;
-
     fetch('/api/youtube', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://www.youtube.com/watch?v=' + id, start: start, maxDur: maxDur })
+      body: JSON.stringify({ url: 'https://www.youtube.com/watch?v=' + id })
     }).then(function (r) {
       if (!r.ok) {
         return r.json().catch(function () { return {}; }).then(function (j) {
@@ -552,6 +550,9 @@ sound:Play()</code></pre>
       var t = r.headers.get('X-Title');
       try { t = t ? decodeURIComponent(t) : ''; } catch (e) {}
       return r.blob().then(function (blob) { return { blob: blob, title: t || ('youtube-' + id) }; });
+    }).catch(function (e) {
+      // a TypeError here is the browser's own "the connection broke" error; its wording differs per browser
+      throw e instanceof TypeError ? new Error('The download was interrupted. Check your connection and try again.') : e;
     }).then(function (res) {
       var type = res.blob.type || 'audio/mpeg';
       var ext = /webm/.test(type) ? 'webm' : /mp4|m4a|aac/.test(type) ? 'm4a' : /ogg|opus/.test(type) ? 'ogg' : 'mp3';
