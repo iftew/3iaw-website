@@ -180,12 +180,14 @@ async function convert(job, file) {
   const prog = (from, span) => (f) => { job.progress = Math.round((from + f * span) * 100); render(); };
   const buf = await decode(file);
   prog(0, 0.1)(1);
+  // the crop (trimStart..trimEnd, in seconds of the original), then Max Duration on top
   const start = Math.min(Math.floor((job.trimStart || 0) * RATE), buf.length);
+  const end = job.trimEnd > 0 ? Math.min(Math.floor(job.trimEnd * RATE), buf.length) : buf.length;
   const maxSec = Math.min(MAX_SECONDS, job.maxSeconds || MAX_SECONDS);
   const maxIn = Math.floor(maxSec * job.speed * RATE);
-  const inLen = Math.min(buf.length - start, maxIn);
-  if (inLen < RATE * 0.2) throw new Error('Nothing left to convert after the start time.');
-  job.notes = buf.length - start > maxIn ? [`Cut to ${maxSec} seconds (Max Duration).`] : [];
+  const inLen = Math.min(end - start, maxIn);
+  if (inLen < RATE * 0.2) throw new Error('Nothing left to convert in the cropped part.');
+  job.notes = end - start > maxIn ? [`Cut to ${maxSec} seconds (Max Duration).`] : [];
   // copies, so the effects never change the decoded original
   let L = buf.getChannelData(0).slice(start, start + inLen);
   let R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice(start, start + inLen);
@@ -300,11 +302,157 @@ const pickDefault = () => document.querySelector('.ac-presets [data-name="Defaul
 pickDefault();
 window.addEventListener('pageshow', (e) => { if (e.persisted) pickDefault(); });
 
+// ---------- crop: pick the part of the file to convert ----------
+// A waveform with two handles (start, end), exact time boxes, and "Play selection" to hear the cut.
+// The times are seconds of the original file; convert() cuts there before the speed change.
+const crop = { start: 0, end: 0, dur: 0, peaks: null, buf: null, ctx: null, src: null, raf: 0, token: 0 };
+const cropBox = $('#cropBox'), cropCanvas = $('#cropCanvas'), cropStartR = $('#cropStartR'), cropEndR = $('#cropEndR');
+const cropStartIn = $('#cropStart'), cropEndIn = $('#cropEnd'), cropPlay = $('#cropPlay'), cropMsg = $('#cropMsg'), cropHead = $('#cropHead');
+const CROP_MIN = 0.5; // shortest selection, in seconds
+
+const clock = (s) => { s = Math.max(0, s); const m = Math.floor(s / 60); const r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); };
+// "1:23.5", "83.5" or "1:02:03" -> seconds; NaN when it can't be read
+function readClock(text) {
+  const parts = String(text).trim().replace(',', '.').split(':');
+  if (!parts.length || parts.length > 3 || parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) return NaN;
+  return parts.reduce((total, p) => total * 60 + parseFloat(p), 0);
+}
+
+function stopCropPlay() {
+  if (crop.src) { try { crop.src.stop(); } catch { /* already stopped */ } crop.src = null; }
+  cancelAnimationFrame(crop.raf);
+  cropHead.hidden = true;
+  cropPlay.classList.remove('on');
+  cropPlay.querySelector('span').textContent = 'Play selection';
+}
+
+function drawCrop() {
+  const w = cropCanvas.clientWidth, h = cropCanvas.clientHeight;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  cropCanvas.width = Math.round(w * dpr); cropCanvas.height = Math.round(h * dpr);
+  const g = cropCanvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  if (!crop.peaks) return;
+  const css = getComputedStyle(document.documentElement);
+  const on = css.getPropertyValue('--white').trim() || '#f5f5f7', off = css.getPropertyValue('--grey-dim').trim() || '#75757d';
+  const bars = crop.peaks.length, step = w / bars, mid = h / 2;
+  for (let i = 0; i < bars; i++) {
+    const t = ((i + 0.5) / bars) * crop.dur;
+    g.fillStyle = t >= crop.start && t <= crop.end ? on : off;
+    const bh = Math.max(1.5, crop.peaks[i] * (h - 6));
+    g.fillRect(i * step + step * 0.15, mid - bh / 2, Math.max(1, step * 0.7), bh);
+  }
+}
+
+function showCrop() {
+  const d = crop.dur || 1;
+  $('#cropShadeL').style.width = (crop.start / d) * 100 + '%';
+  $('#cropShadeR').style.width = (100 - (crop.end / d) * 100) + '%';
+  cropStartR.value = crop.start; cropEndR.value = crop.end;
+  if (document.activeElement !== cropStartIn) cropStartIn.value = clock(crop.start);
+  if (document.activeElement !== cropEndIn) cropEndIn.value = clock(crop.end);
+  $('#cropLen').textContent = clock(crop.end - crop.start) + ' / ' + clock(crop.dur);
+  $('#cropReset').hidden = crop.start === 0 && crop.end === crop.dur;
+  drawCrop();
+}
+
+function setCrop(start, end, moving) {
+  const d = crop.dur;
+  start = Math.min(Math.max(0, start), d); end = Math.min(Math.max(0, end), d);
+  if (end - start < CROP_MIN) { if (moving === 'end') end = Math.min(d, start + CROP_MIN); else start = Math.max(0, end - CROP_MIN); }
+  crop.start = Math.round(start * 10) / 10; crop.end = Math.round(end * 10) / 10;
+  if (crop.src) stopCropPlay();
+  showCrop();
+}
+
+async function loadCrop(f) {
+  stopCropPlay();
+  const token = ++crop.token;
+  Object.assign(crop, { start: 0, end: 0, dur: 0, peaks: null, buf: null });
+  cropBox.hidden = !f;
+  if (!f) return;
+  cropBox.classList.add('loading');
+  cropPlay.disabled = true;
+  cropMsg.hidden = false; cropMsg.textContent = 'Reading the audio…';
+  $('#cropLen').textContent = '';
+  drawCrop();
+  try {
+    crop.ctx = crop.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await crop.ctx.decodeAudioData(await f.arrayBuffer());
+    if (token !== crop.token) return; // another file was chosen meanwhile
+    const data = buf.getChannelData(0), bars = 160, size = Math.floor(data.length / bars) || 1, peaks = new Float32Array(bars);
+    let top = 0;
+    for (let i = 0; i < bars; i++) {
+      let m = 0;
+      for (let j = i * size, e = Math.min(data.length, j + size); j < e; j += 16) { const v = Math.abs(data[j]); if (v > m) m = v; }
+      peaks[i] = m; if (m > top) top = m;
+    }
+    for (let i = 0; i < bars; i++) peaks[i] = top ? peaks[i] / top : 0;
+    const dur = Math.round(buf.duration * 10) / 10;
+    Object.assign(crop, { buf, peaks, dur, start: 0, end: dur });
+    for (const r of [cropStartR, cropEndR]) { r.max = dur; r.disabled = false; }
+    cropMsg.hidden = true;
+    cropPlay.disabled = false;
+    cropBox.classList.remove('loading');
+    showCrop();
+  } catch {
+    if (token !== crop.token) return;
+    cropMsg.textContent = "This file can't be previewed here, so it will be converted from the start.";
+    cropBox.classList.remove('loading');
+    for (const r of [cropStartR, cropEndR]) r.disabled = true;
+  }
+}
+
+cropStartR.oninput = () => setCrop(+cropStartR.value, crop.end, 'start');
+cropEndR.oninput = () => setCrop(crop.start, +cropEndR.value, 'end');
+// the handle nearest to where the waveform was pressed takes the click, so both stay reachable when they are close
+$('#cropWave').addEventListener('pointerdown', (e) => {
+  if (!crop.dur) return;
+  const rect = cropStartR.getBoundingClientRect();
+  const t = ((e.clientX - rect.left) / rect.width) * crop.dur;
+  const nearStart = Math.abs(t - crop.start) <= Math.abs(t - crop.end);
+  cropStartR.style.zIndex = nearStart ? 3 : 2; cropEndR.style.zIndex = nearStart ? 2 : 3;
+}, true);
+for (const [input, which] of [[cropStartIn, 'start'], [cropEndIn, 'end']]) {
+  input.onchange = () => {
+    const s = readClock(input.value);
+    if (Number.isNaN(s)) { input.value = clock(crop[which]); return; }
+    if (which === 'start') setCrop(s, crop.end, 'start'); else setCrop(crop.start, s, 'end');
+    input.value = clock(crop[which]);
+  };
+  input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); input.onchange(); input.blur(); } };
+}
+$('#cropReset').onclick = () => setCrop(0, crop.dur);
+cropPlay.onclick = () => {
+  if (crop.src) { stopCropPlay(); return; }
+  if (!crop.buf) return;
+  crop.ctx.resume();
+  const src = crop.ctx.createBufferSource();
+  src.buffer = crop.buf; src.connect(crop.ctx.destination);
+  const began = crop.ctx.currentTime, from = crop.start, len = crop.end - crop.start;
+  src.onended = () => { if (crop.src === src) stopCropPlay(); };
+  src.start(0, from, len);
+  crop.src = src;
+  cropPlay.classList.add('on');
+  cropPlay.querySelector('span').textContent = 'Stop';
+  cropHead.hidden = false;
+  const tick = () => {
+    const t = from + Math.min(len, crop.ctx.currentTime - began);
+    cropHead.style.left = (t / crop.dur) * 100 + '%';
+    crop.raf = requestAnimationFrame(tick);
+  };
+  tick();
+};
+new ResizeObserver(() => { if (!cropBox.hidden) drawCrop(); }).observe(cropCanvas);
+
 const drop = $('#drop'), fileIn = $('#fileIn');
 function setFile(f) {
   file = f || null;
   $('#dropName').textContent = f ? f.name : 'Drop an audio file here';
   drop.classList.toggle('has', Boolean(f));
+  loadCrop(file);
 }
 drop.onclick = () => fileIn.click();
 drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileIn.click(); } };
@@ -334,7 +482,8 @@ $('#acForm').onsubmit = (e) => {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name: ($('#assetName').value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 50),
     source: file.name, speed: +speed.value, mode, pitch: +pitch.value, gain: +gain.value, maxSeconds: +maxDur.value,
-    trimStart: Math.max(0, +$('#trimStart').value || 0), autoUpload: autoUpload.checked,
+    // the crop; with no preview (crop.dur 0) the whole file is converted
+    trimStart: crop.dur ? crop.start : 0, trimEnd: crop.dur && crop.end < crop.dur ? crop.end : 0, autoUpload: autoUpload.checked,
     stage: 'queued', progress: 0, createdAt: Date.now(),
   };
   jobs.unshift(job); saveJobs();

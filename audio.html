@@ -177,6 +177,26 @@
         <input type="file" id="fileIn" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm" hidden>
         <p class="ac-rights">You can upload an MP3 file from your device or convert audio using a YouTube link.</p>
 
+        <!-- crop: shown once a file (or YouTube audio) is chosen; assets/audio.js draws the waveform and converts only the selected part -->
+        <div class="ac-crop" id="cropBox" hidden>
+          <div class="ac-label">Crop <em id="cropLen">0:00</em></div>
+          <div class="ac-wave" id="cropWave">
+            <canvas id="cropCanvas" aria-hidden="true"></canvas>
+            <div class="ac-wave-shade" id="cropShadeL"></div>
+            <div class="ac-wave-shade" id="cropShadeR"></div>
+            <div class="ac-wave-head" id="cropHead" hidden></div>
+            <p class="ac-wave-msg" id="cropMsg">Reading the audio…</p>
+            <input type="range" id="cropStartR" min="0" max="1" step="0.1" value="0" aria-label="Crop start">
+            <input type="range" id="cropEndR" min="0" max="1" step="0.1" value="1" aria-label="Crop end">
+          </div>
+          <div class="ac-crop-row">
+            <button type="button" class="btn btn-outline ac-crop-play" id="cropPlay" disabled><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg><span>Play selection</span></button>
+            <label class="ac-crop-time"><span>Start</span><input type="text" id="cropStart" inputmode="decimal" autocomplete="off" value="0:00.0"></label>
+            <label class="ac-crop-time"><span>End</span><input type="text" id="cropEnd" inputmode="decimal" autocomplete="off" value="0:00.0"></label>
+            <button type="button" class="ac-toggle ac-crop-reset" id="cropReset">Reset</button>
+          </div>
+        </div>
+
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>02</b> Sound<i></i>
           <span class="ac-summary" id="soundSummary">Default &middot; 1.20x &middot; -8 dB &middot; 400s</span>
           <button type="button" class="ac-toggle" id="soundToggle" aria-expanded="true" aria-controls="soundBox">Hide</button>
@@ -206,7 +226,6 @@
 
         <div class="ac-step-head"><span class="ac-step-dot"></span><b>03</b> Upload<i></i></div>
         <div class="field-row ac-row">
-          <label class="field"><span>Start at (seconds)</span><input type="number" id="trimStart" min="0" step="1" placeholder="0"></label>
           <label class="field"><span>Name on Roblox</span><input type="text" id="assetName" maxlength="50" placeholder="from the file name"></label>
         </div>
         <label class="ac-check"><input type="checkbox" id="autoUpload" checked> Upload to Roblox when it's converted</label>
@@ -530,7 +549,7 @@ sound:Play()</code></pre>
      with an optional X-Title header (URL-encoded video title).
    The audio is then handed to #fileIn as if it was chosen from the device,
    so assets/audio.js trims, converts and uploads it exactly like a normal file.
-   Trim start and Max Duration are applied there, once, so they are not sent to the Worker. */
+   The crop and Max Duration are applied there, once, so they are not sent to the Worker. */
 (function () {
   var pick = document.getElementById('srcPick');
   var box = document.getElementById('ytBox');
