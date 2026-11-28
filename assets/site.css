@@ -293,7 +293,7 @@ nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
 .btn-solid:hover{background:var(--grey-light); box-shadow:0 10px 40px rgba(255,255,255,.2);}
 .btn-outline{background:rgba(19,19,22,.55); color:var(--grey-light); border-color:var(--line); backdrop-filter:blur(6px);}
 .btn-outline:hover{border-color:var(--grey-mid); color:var(--white);}
-/* hero link to the Audio Converter: a white glow, a bright spot running around the border and a light sweep across it */
+/* hero link to the Audio Converter: a white glow and a bright spot running around the border */
 @property --tool-angle{syntax:'<angle>'; inherits:false; initial-value:0deg;}
 .btn-tool{
   position:relative; overflow:hidden; isolation:isolate; color:var(--white);
@@ -304,17 +304,11 @@ nav a.active{color:var(--white); background:rgba(255,255,255,.08);}
   box-shadow:0 0 22px rgba(255,255,255,.18), 0 0 48px rgba(255,255,255,.08);
   animation:tool-spin 4s linear infinite, tool-glow 2.6s ease-in-out infinite;
 }
-.btn-tool::after{
-  content:""; position:absolute; top:0; bottom:0; left:-60%; width:45%; z-index:-1; pointer-events:none;
-  background:linear-gradient(105deg, transparent, rgba(255,255,255,.38), transparent);
-  transform:skewX(-20deg); animation:tool-shine 3.2s ease-in-out infinite;
-}
 .btn-tool svg{color:var(--white);}
 .btn-tool:hover{color:var(--white); box-shadow:0 0 30px rgba(255,255,255,.3), 0 0 60px rgba(255,255,255,.14);}
 @keyframes tool-spin{to{--tool-angle:360deg;}}
 @keyframes tool-glow{50%{box-shadow:0 0 34px rgba(255,255,255,.32), 0 0 70px rgba(255,255,255,.14);}}
-@keyframes tool-shine{0%{left:-60%;} 55%,100%{left:130%;}}
-@media (prefers-reduced-motion: reduce){ .btn-tool, .btn-tool::after{animation:none;} .btn-tool::after{display:none;} }
+@media (prefers-reduced-motion: reduce){ .btn-tool{animation:none;} }
 
 .hero .scroll-hint{display:none;}
 .scroll-hint{
