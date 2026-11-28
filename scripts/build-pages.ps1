@@ -84,9 +84,10 @@ function Page([string]$path, [string]$title, [string]$description, [string]$acti
     $cls = if ($link[0] -eq $active) { ' class="active" aria-current="page"' } else { '' }
     $nav += '      <li><a href="' + $link[0] + '"' + $cls + '>' + $link[1] + "</a></li>`n"
   }
-  # the Audio Converter tab sits top left (like the homepage) and opens in its own browser tab
-  $toolAttr = if ($active -eq '/audio') { ' class="tool-tab active" aria-current="page"' } else { ' class="tool-tab" target="_blank" rel="noopener"' }
+  # the Audio Converter tab sits top left and opens in its own browser tab; the converter's own page (/audio) has none
+  $toolAttr = ' class="tool-tab" target="_blank" rel="noopener"'
   $toolTab = '<a href="/audio"' + $toolAttr + '><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18V6l11-2v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="16" r="3" stroke="currentColor" stroke-width="2"/></svg>Audio Converter</a>'
+  if ($active -eq '/audio') { $toolTab = '' }
   $nav += '      <li><a href="/#contact" class="nav-cta">Contact</a></li>'
   $t = Html $title; $d = Html $description
   return @"
